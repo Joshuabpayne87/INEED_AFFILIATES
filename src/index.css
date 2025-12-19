@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.cdnfonts.com/css/tt-rounds-neue');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'TT Rounds Neue', sans-serif;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, h4, h5, h6, button {
+    font-family: 'Sora', sans-serif;
+    line-height: 1.2;
+  }
+}
+
+@layer components {
+  .card-hover {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .card-hover:hover {
+    @apply -translate-y-1 shadow-lg;
+  }
+
+  .gradient-border {
+    position: relative;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #6666FF, #66FFFF) border-box;
+    border: 2px solid transparent;
+  }
+
+  .gradient-bg-primary {
+    background: linear-gradient(135deg, #6666FF, #66FFFF);
+  }
+
+  .gradient-bg-pink {
+    background: linear-gradient(135deg, #FF1493, #FF69FF);
+  }
+
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #6666FF, #66FFFF);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-pink {
+    background: linear-gradient(135deg, #FF1493, #FF69FF);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .card-pop {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .card-pop:hover {
+    @apply -translate-y-1 shadow-xl;
+  }
+
+  .hover-pop {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .hover-pop:hover {
+    @apply scale-105;
+  }
+}

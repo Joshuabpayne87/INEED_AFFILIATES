@@ -1,0 +1,787 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Mail,
+  Globe,
+  Megaphone,
+  BarChart3,
+  Users,
+  Package,
+  TrendingUp,
+  MessageCircle,
+} from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+export interface BusinessProfile {
+  id: string;
+  company_name: string;
+  contact_name: string;
+  email: string;
+  website: string;
+  description: string;
+  partnership_type: string;
+  industry: string;
+  commission_rate: string;
+  requirements: string;
+  logo_url: string | null;
+  featured: boolean;
+  tagline?: string;
+  video_url?: string;
+  problem_solved?: string;
+  target_audience?: string;
+  main_offer_type?: string;
+  unique_value?: string;
+  founder_name?: string;
+  founder_headshot_url?: string;
+  founder_bio?: string;
+  founder_background?: string;
+  founder_why_started?: string;
+  niche?: string;
+  monetization_type?: string;
+  cross_promotion_preference?: string;
+  social_audience_size?: string;
+  email_list_size?: string;
+  email_open_rate?: string;
+  number_of_offers?: string;
+  partnership_opportunities?: string[];
+  looking_for?: string[];
+  primary_offers?: Array<{
+    name: string;
+    description: string;
+    offer_type: string;
+    commission_structure: string;
+    target_audience: string;
+  }>;
+}
+
+const mockBusinesses: BusinessProfile[] = [
+  {
+    id: 'saas-claritymetrics-001',
+    company_name: 'ClarityMetrics.io',
+    contact_name: 'Alex Rivera',
+    email: 'partners@claritymetrics.io',
+    website: 'https://claritymetrics.io',
+    description:
+      'ClarityMetrics.io is a revenue analytics SaaS for online experts, agencies, and high-ticket course creators who want a single source of truth for their funnels, campaigns, and recurring revenue. We connect directly to Stripe, PayPal, and your ad platforms to give you clean, actionable numbers without spreadsheets.',
+    partnership_type: 'affiliate',
+    industry: 'SaaS Companies',
+    commission_rate: '30% recurring for 12 months on all paid plans',
+    requirements:
+      'Audience of at least 3,000 subscribers or 5+ high-ticket clients per month. Must serve online businesses, coaches, or agencies.',
+    logo_url: null,
+    featured: true,
+    tagline: 'The revenue analytics cockpit for serious online businesses.',
+    video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    problem_solved:
+      'Most founders are guessing about where their revenue is really coming from. They stitch together Stripe screenshots, ad dashboards, and hacked spreadsheets. We give them one clean dashboard that shows which offers, funnels, and channels actually print money.',
+    target_audience:
+      'Online coaches, course creators, agencies, and high-ticket SaaS founders doing at least $20k/month who need clear numbers to scale with confidence.',
+    main_offer_type: 'Subscription SaaS (monthly and annual plans).',
+    unique_value:
+      'We pull in payments, ad data, and funnel events automatically and map it into a simple "Cash, MRR, LTV, CAC, ROI" view anyone on the team can understand in minutes.',
+    founder_name: 'Alex Rivera',
+    founder_headshot_url: '',
+    founder_bio:
+      'Alex is a former agency owner turned data-obsessed SaaS founder who has helped dozens of online businesses clean up their analytics so they can scale with less chaos.',
+    founder_background:
+      '10+ years in performance marketing and analytics, previously ran a boutique funnel agency for high-ticket coaches and masterminds before building ClarityMetrics.io.',
+    founder_why_started:
+      'After watching clients make big decisions off messy spreadsheets and random screenshots, Alex built ClarityMetrics.io so founders could finally see the truth about their numbers in one place.',
+    niche: 'Revenue analytics for online experts, agencies, and education businesses.',
+    monetization_type: 'Subscription SaaS (monthly/annual) + done-with-you implementation packages.',
+    cross_promotion_preference:
+      'Email promos, live webinars, and value-based workshops for your list. We can also create custom co-branded dashboards as lead magnets.',
+    social_audience_size: 'Combined reach of ~18,000 across LinkedIn, X, and YouTube.',
+    email_list_size: '9,200+ subscribers (founders, marketers, and high-ticket coaches).',
+    email_open_rate: '32–38% average opens, 4–7% CTR on launch campaigns.',
+    number_of_offers: '3 core plans + 2 implementation packages.',
+    partnership_opportunities: [
+      'Revenue share affiliate promotions',
+      'JV webinars and live workshops',
+      'Co-branded content and lead magnets',
+      'Bundle deals with coaching programs or masterminds',
+    ],
+    looking_for: [
+      'Email list owners serving coaches and agencies',
+      'Mastermind leaders looking for a "metrics stack" perk',
+      'SaaS and funnel consultants who want recurring affiliate income',
+    ],
+    primary_offers: [
+      {
+        name: 'ClarityMetrics Pro',
+        description:
+          'Our flagship plan for 7– and early 8–figure online businesses. Includes all integrations, advanced revenue reporting, cohort analysis, and priority support.',
+        offer_type: 'Subscription SaaS (Pro plan)',
+        commission_structure: '30% recurring for 12 months on monthly and annual plans.',
+        target_audience:
+          'Established coaches, agencies, and digital product brands doing $20k–$300k/month.',
+      },
+      {
+        name: 'Done-With-You Analytics Setup',
+        description:
+          'A one-time implementation package where our team connects all your tools, builds custom dashboards, and trains your team to use them.',
+        offer_type: 'High-ticket implementation service',
+        commission_structure: '20% one-time on setup fees ($2,500–$7,500).',
+        target_audience:
+          'Busy founders who want analytics working in 30 days without touching the tech.',
+      },
+    ],
+  },
+  {
+    id: 'agency-funnelignite-001',
+    company_name: 'FunnelIgnite Agency',
+    contact_name: 'Jordan Blake',
+    email: 'partners@funnelignite.co',
+    website: 'https://funnelignite.co',
+    description:
+      'FunnelIgnite Agency helps high-ticket coaches, consultants, and B2B service providers launch and scale evergreen client-acquisition funnels using paid traffic, email, and conversion-optimized landing pages.',
+    partnership_type: 'strategic',
+    industry: 'Marketing Agencies',
+    commission_rate: '10–20% rev-share or 15% referral fee on retainers and build fees.',
+    requirements:
+      'We prefer partners working with clients selling $3k+ offers, or established agencies/consultants with at least 5 active clients.',
+    logo_url: null,
+    featured: true,
+    tagline: 'Evergreen client acquisition for high-ticket experts.',
+    video_url: 'https://www.loom.com/share/1234567890abcdef',
+    problem_solved:
+      'Most high-ticket experts rely on launches, referrals, or random hustle to sign clients. They don\'t have a predictable pipeline, so revenue swings wildly month to month.',
+    target_audience:
+      'High-ticket coaches, consultants, agencies, and B2B service providers who want a dependable flow of qualified appointments from inbound funnels.',
+    main_offer_type: 'Done-for-you and done-with-you funnel building and paid traffic management.',
+    unique_value:
+      'We focus on simple, lean funnel architectures that can be deployed in weeks—not 6-month "Frankenstein builds"—and we obsess over lead quality and sales conversion, not just clicks.',
+    founder_name: 'Jordan Blake',
+    founder_headshot_url: '',
+    founder_bio:
+      'Jordan has managed over $12M in ad spend and helped dozens of experts move from launch-dependent income to predictable, evergreen client acquisition.',
+    founder_background:
+      'Former in-house growth lead for a top coaching brand; now runs FunnelIgnite Agency supporting 6–8 figure experts and B2B service providers.',
+    founder_why_started:
+      'Jordan got tired of watching brilliant experts burn out on launch cycles and feast-or-famine revenue. FunnelIgnite was created to give them a reliable client-getting machine.',
+    niche: 'Evergreen funnels for high-ticket experts and B2B service providers.',
+    monetization_type: 'Monthly retainers, setup fees, performance/rev-share deals.',
+    cross_promotion_preference:
+      'Live workshops, joint case-study breakdowns, and "funnel teardown" sessions for your audience.',
+    social_audience_size: 'Around 11,000 combined across Facebook, Instagram, and LinkedIn.',
+    email_list_size: '6,500+ email subscribers (coaches, consultants, and agency owners).',
+    email_open_rate: '29–35% opens on weekly content, up to 45% on launch sequences.',
+    number_of_offers: '3 main service tiers plus a strategy intensive.',
+    partnership_opportunities: [
+      'White-label funnel builds for agencies',
+      'Done-for-you implementation for your coaching clients',
+      'Rev-share deals on scalable offers',
+      'JV workshops and funnel audits',
+    ],
+    looking_for: [
+      'Business coaches and mastermind leaders with high-ticket clients',
+      'SaaS tools serving the funnel/marketing space',
+      'Agencies that want to bolt on premium funnel builds without hiring in-house',
+    ],
+    primary_offers: [
+      {
+        name: 'Evergreen Client Engine',
+        description:
+          'End-to-end funnel build including strategy, funnel pages, email automations, and paid traffic setup to generate qualified sales calls year-round.',
+        offer_type: 'Done-for-you funnel service',
+        commission_structure:
+          '15% referral fee on setup fees ($5,000–$15,000) + 10% of first 3 months retainers.',
+        target_audience:
+          'High-ticket coaches, consultants, and B2B service providers selling $3k–$20k offers.',
+      },
+      {
+        name: 'FunnelIgnite Strategy Intensive',
+        description:
+          'A 90-minute strategy session plus a custom funnel blueprint that clients can implement themselves or with their team.',
+        offer_type: 'High-ticket strategy session',
+        commission_structure: '20% commission on each intensive sold ($1,500–$2,500).',
+        target_audience:
+          'Experts who want a clear game plan before committing to full implementation.',
+      },
+    ],
+  },
+  {
+    id: 'coach-revenuearchitect-001',
+    company_name: 'Revenue Architect Coaching',
+    contact_name: 'Taylor Morgan',
+    email: 'taylor@revenuearchitect.co',
+    website: 'https://revenuearchitect.co',
+    description:
+      'Revenue Architect Coaching helps established online entrepreneurs turn their scattered offers into a clean, scalable "offer stack" and partnership strategy so they can grow without burning out.',
+    partnership_type: 'jv',
+    industry: 'Coaching & Consulting',
+    commission_rate:
+      '30–40% affiliate commission on group programs and 10–20% rev-share on select high-ticket intensives.',
+    requirements:
+      'We work best with founders already doing $15k+/month who are willing to implement, track, and optimize. For partners, we prefer lists of 2,000+ engaged subscribers.',
+    logo_url: null,
+    featured: false,
+    tagline: 'Architect a business that grows through partnerships, not grind.',
+    video_url: 'https://vimeo.com/76979871',
+    problem_solved:
+      'Many founders have "offer soup" and random collabs that don't plug into a strategic, scalable revenue engine. They feel stuck juggling too many things with no clear growth path.',
+    target_audience:
+      'Coaches, course creators, and expert-based business owners who want to simplify their offers and leverage partnerships for growth.',
+    main_offer_type: 'Group coaching, 1:1 intensives, and implementation sprints.',
+    unique_value:
+      'We combine offer architecture, pricing strategy, and partnership mapping into one process so clients walk away with a clear, implementable growth roadmap—not just ideas.',
+    founder_name: 'Taylor Morgan',
+    founder_headshot_url: '',
+    founder_bio:
+      'Taylor is a revenue strategist and coach who has helped multiple 6–7 figure founders streamline their offer suite and unlock new revenue using strategic partnerships.',
+    founder_background:
+      'Former COO for a 7-figure education company, with experience in product strategy, launches, and JV partner management.',
+    founder_why_started:
+      'Taylor saw too many smart founders trapped in complexity and wanted to create a program that simplifies offers and turns partnerships into a repeatable growth lever.',
+    niche: 'Offer architecture and partnership strategy for online experts.',
+    monetization_type:
+      'Cohort-based group coaching, 1:1 intensives, and VIP implementation weeks.',
+    cross_promotion_preference:
+      'JV webinars, live trainings, and private partner-only workshops for your mastermind or client base.',
+    social_audience_size: 'About 7,500 followers across Instagram, Facebook, and LinkedIn.',
+    email_list_size: '4,100+ engaged subscribers.',
+    email_open_rate: '35–42% average opens, 6–10% CTR on promo campaigns.',
+    number_of_offers: '2 flagship programs + 2 premium intensives.',
+    partnership_opportunities: [
+      'JV webinars and live training for your audience',
+      'Partner bonuses for your launches or programs',
+      'Co-created "Offer & Partnership Audit" sessions',
+    ],
+    looking_for: [
+      'Mastermind hosts with established founder communities',
+      'Marketing/ops consultants whose clients need offer clarity',
+      'SaaS tools serving coaches and course creators',
+    ],
+    primary_offers: [
+      {
+        name: 'Offer & Partnership Architect',
+        description:
+          'A 12-week group coaching program where founders clean up their offer suite, dial in pricing, and build a simple partnership-driven growth plan.',
+        offer_type: 'Group coaching program',
+        commission_structure:
+          '40% affiliate commission on program tuition ($3,000–$5,000 per enrollment).',
+        target_audience:
+          'Established online entrepreneurs doing $15k–$50k/month who want to simplify and scale.',
+      },
+      {
+        name: 'Revenue Blueprint Intensive',
+        description:
+          'A 1:1 deep-dive where we map out the next 12 months of revenue, offers, and partnership plays in a single day.',
+        offer_type: 'High-ticket 1:1 intensive',
+        commission_structure: '20% commission on intensives sold ($4,000–$8,000).',
+        target_audience:
+          'Time-poor founders who want a clear, executable revenue and partnership plan fast.',
+      },
+    ],
+  },
+];
+
+export default function BusinessProfile() {
+  const { id } = useParams<{ id: string }>();
+  const [business, setBusiness] = useState<BusinessProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [expandedOffer, setExpandedOffer] = useState<number | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [isFavLoading, setIsFavLoading] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      loadBusiness();
+      checkFavoriteStatus();
+    }
+  }, [id]);
+
+  async function loadBusiness() {
+    setIsLoading(true);
+    const found = mockBusinesses.find((b) => b.id === id) || null;
+    setBusiness(found);
+    setIsLoading(false);
+  }
+
+  const checkFavoriteStatus = async () => {
+    if (!id) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('favorites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('partnership_id', id)
+      .maybeSingle();
+
+    setIsFavorited(!!data);
+  };
+
+  const toggleFavorite = async () => {
+    if (!id) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      alert('Please sign in to bookmark partnerships');
+      return;
+    }
+
+    setIsFavLoading(true);
+
+    if (isFavorited) {
+      await supabase
+        .from('favorites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('partnership_id', id);
+      setIsFavorited(false);
+    } else {
+      await supabase
+        .from('favorites')
+        .insert({ user_id: user.id, partnership_id: id });
+      setIsFavorited(true);
+    }
+
+    setIsFavLoading(false);
+  };
+
+  function getEmbedUrl(url: string): string {
+    if (!url) return '';
+
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      const videoId = url.includes('youtu.be')
+        ? url.split('youtu.be/')[1]?.split('?')[0]
+        : url.split('v=')[1]?.split('&')[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+
+    if (url.includes('vimeo.com')) {
+      const videoId = url.split('vimeo.com/')[1]?.split('?')[0];
+      return `https://player.vimeo.com/video/${videoId}`;
+    }
+
+    if (url.includes('loom.com')) {
+      const videoId = url.split('loom.com/share/')[1]?.split('?')[0];
+      return `https://www.loom.com/embed/${videoId}`;
+    }
+
+    if (url.includes('wistia')) {
+      return url;
+    }
+
+    return url;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="animate-pulse space-y-8">
+        <div className="h-12 bg-gray-200 rounded w-1/3"></div>
+        <div className="h-64 bg-gray-200 rounded"></div>
+        <div className="h-96 bg-gray-200 rounded"></div>
+      </div>
+    );
+  }
+
+  if (!business) {
+    return (
+      <div className="text-center py-16">
+        <h1 className="text-3xl font-bold text-[#001134] mb-4">Business Not Found</h1>
+        <Link to="/directory" className="text-[#6666FF] hover:underline">
+          Return to Directory
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+        <Link
+          to="/directory"
+          className="inline-flex items-center gap-2 text-[#6666FF] hover:text-[#5555EE] mb-6 font-medium"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Directory
+        </Link>
+
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-4">
+            <div className="flex-1">
+              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+                <h1 className="text-4xl md:text-5xl font-bold text-[#001134]">
+                  {business.company_name}
+                </h1>
+                {business.featured && (
+                  <span className="bg-gradient-to-r from-[#6666FF] to-[#66FFFF] text-white text-xs font-bold px-3 py-1 rounded-full">
+                    FEATURED
+                  </span>
+                )}
+                <button
+                  onClick={toggleFavorite}
+                  disabled={isFavLoading}
+                  className="text-3xl hover:scale-110 transition-transform disabled:opacity-50 md:ml-2"
+                  title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                  style={{ filter: isFavorited ? 'none' : 'grayscale(100%) opacity(0.4)' }}
+                >
+                  🏆
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                <span className="bg-blue-50 text-blue-700 border border-blue-200 text-sm font-semibold px-4 py-1.5 rounded-full">
+                  {business.industry}
+                </span>
+              </div>
+              {business.tagline && (
+                <p className="text-xl text-gray-600 mt-2">{business.tagline}</p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button className="relative px-6 py-3 bg-gradient-to-r from-[#FF1493] to-[#FF69FF] rounded-lg font-semibold transition-all hover:shadow-lg group flex items-center gap-2">
+                <span className="absolute inset-[2px] bg-white rounded-[6px] group-hover:bg-transparent transition-all"></span>
+                <MessageCircle className="w-5 h-5 relative z-10 text-[#FF1493] group-hover:text-white transition-colors" />
+                <span className="relative z-10 bg-gradient-to-r from-[#FF1493] to-[#FF69FF] bg-clip-text text-transparent group-hover:text-white transition-colors">
+                  Message Business
+                </span>
+              </button>
+              <a
+                href={business.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border-2 border-[#6666FF] text-[#6666FF] hover:bg-[#6666FF] hover:text-white px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2"
+              >
+                <Globe className="w-5 h-5" />
+                Visit Website
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            {business.video_url && (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                  <h2 className="text-2xl font-bold text-[#001134]">Business Introduction Video</h2>
+                </div>
+                <div className="aspect-video">
+                  <iframe
+                    src={getEmbedUrl(business.video_url)}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title="Business intro video"
+                  ></iframe>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+              <h2 className="text-2xl font-bold text-[#001134] mb-4">About This Business</h2>
+              <div className="space-y-4 text-gray-700 leading-relaxed">
+                <p>{business.description}</p>
+
+                {business.problem_solved && (
+                  <div>
+                    <h3 className="font-bold text-[#001134] mb-2">Problem We Solve:</h3>
+                    <p>{business.problem_solved}</p>
+                  </div>
+                )}
+
+                {business.target_audience && (
+                  <div>
+                    <h3 className="font-bold text-[#001134] mb-2">Who We Serve:</h3>
+                    <p>{business.target_audience}</p>
+                  </div>
+                )}
+
+                {business.main_offer_type && (
+                  <div>
+                    <h3 className="font-bold text-[#001134] mb-2">Main Offer Type:</h3>
+                    <p>{business.main_offer_type}</p>
+                  </div>
+                )}
+
+                {business.unique_value && (
+                  <div>
+                    <h3 className="font-bold text-[#001134] mb-2">What Makes Us Unique:</h3>
+                    <p>{business.unique_value}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {business.founder_name && (
+              <div className="bg-gradient-to-br from-[#F8F9FF] to-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                <h2 className="text-2xl font-bold text-[#001134] mb-6">Meet the Founder</h2>
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="flex-shrink-0">
+                    {business.founder_headshot_url ? (
+                      <img
+                        src={business.founder_headshot_url}
+                        alt={business.founder_name}
+                        className="w-40 h-40 rounded-2xl object-cover shadow-md"
+                      />
+                    ) : (
+                      <div className="w-40 h-40 rounded-2xl bg-gradient-to-br from-[#6666FF]/10 to-[#66FFFF]/10 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                        <div className="text-center">
+                          <Users className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                          <p className="text-xs text-gray-500">Headshot</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <h3 className="text-xl font-bold text-[#001134]">{business.founder_name}</h3>
+
+                    {business.founder_bio && (
+                      <p className="text-gray-700 leading-relaxed">{business.founder_bio}</p>
+                    )}
+
+                    {business.founder_background && (
+                      <div>
+                        <h4 className="font-bold text-[#001134] mb-2">Background & Expertise:</h4>
+                        <p className="text-gray-700 leading-relaxed">
+                          {business.founder_background}
+                        </p>
+                      </div>
+                    )}
+
+                    {business.founder_why_started && (
+                      <div>
+                        <h4 className="font-bold text-[#001134] mb-2">
+                          Why I Started This Business:
+                        </h4>
+                        <p className="text-gray-700 leading-relaxed">
+                          {business.founder_why_started}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {business.partnership_opportunities &&
+              business.partnership_opportunities.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                  <h2 className="text-2xl font-bold text-[#001134] mb-4">Partner Opportunities</h2>
+                  <p className="text-gray-600 mb-4">
+                    We are actively seeking the following partnership types:
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {business.partnership_opportunities.map((opp, index) => (
+                      <span
+                        key={index}
+                        className="bg-gradient-to-r from-[#6666FF] to-[#66FFFF] text-white text-sm font-semibold px-4 py-2 rounded-full"
+                      >
+                        {opp}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {business.primary_offers && business.primary_offers.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                <h2 className="text-2xl font-bold text-[#001134] mb-6">Primary Offers</h2>
+                <div className="space-y-3">
+                  {business.primary_offers.map((offer, index) => (
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-xl overflow-hidden hover:border-[#6666FF] transition-colors"
+                    >
+                      <button
+                        onClick={() =>
+                          setExpandedOffer(expandedOffer === index ? null : index)
+                        }
+                        className="w-full text-left p-5 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      >
+                        <h3 className="text-xl font-bold text-[#001134]">{offer.name}</h3>
+                        <span className="text-[#6666FF] font-bold text-2xl">
+                          {expandedOffer === index ? '−' : '+'}
+                        </span>
+                      </button>
+                      {expandedOffer === index && (
+                        <div className="px-5 pb-5 pt-2 border-t border-gray-100">
+                          <p className="text-gray-600 mb-4">{offer.description}</p>
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div>
+                              <span className="text-sm font-semibold text-gray-600">
+                                Offer Type:
+                              </span>
+                              <p className="text-[#001134] font-bold">{offer.offer_type}</p>
+                            </div>
+                            <div>
+                              <span className="text-sm font-semibold text-gray-600">
+                                Commission:
+                              </span>
+                              <p className="text-[#001134] font-bold">
+                                {offer.commission_structure}
+                              </p>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-sm font-semibold text-gray-600">
+                                Target Audience:
+                              </span>
+                              <p className="text-[#001134] font-bold">
+                                {offer.target_audience}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <div className="relative p-[3px] rounded-2xl bg-gradient-to-br from-[#6666FF] to-[#66FFFF] shadow-lg">
+              <div className="bg-white rounded-[14px] p-6">
+                <h2 className="text-xl font-bold text-[#001134] mb-4">Overview</h2>
+
+                <div className="flex flex-col items-center mb-6">
+                  <div className="w-24 h-24 bg-gradient-to-br from-[#6666FF]/10 to-[#66FFFF]/10 rounded-2xl flex items-center justify-center border border-gray-200 mb-3">
+                    <Megaphone className="w-12 h-12 text-[#6666FF]" />
+                  </div>
+                  <h3 className="text-lg font-bold text-[#001134] text-center">
+                    {business.company_name}
+                  </h3>
+                  {business.tagline && (
+                    <p className="text-sm text-gray-600 text-center mt-1">
+                      {business.tagline}
+                    </p>
+                  )}
+                </div>
+
+                {business.commission_rate && (
+                  <div className="bg-gradient-to-r from-[#6666FF]/10 to-[#66FFFF]/10 rounded-xl p-4 mb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <TrendingUp className="w-5 h-5 text-[#6666FF]" />
+                      <span className="text-sm font-semibold text-gray-600">
+                        Commission Range
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-[#001134]">
+                      {business.commission_rate}
+                    </p>
+                  </div>
+                )}
+
+                {business.looking_for && business.looking_for.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm font-semibold text-gray-600 mb-2">Looking For:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {business.looking_for.map((item, index) => (
+                        <span
+                          key={index}
+                          className="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold px-3 py-1 rounded-full"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {business.monetization_type && (
+                  <div className="pt-4 border-t border-gray-100">
+                    <p className="text-sm font-semibold text-gray-600 mb-1">Monetization:</p>
+                    <p className="text-[#001134] font-bold">
+                      {business.monetization_type}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+              <h2 className="text-xl font-bold text-[#001134] mb-4">Metrics</h2>
+              <div className="grid grid-cols-1 gap-3">
+                {business.cross_promotion_preference && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Megaphone className="w-5 h-5 text-[#6666FF]" />
+                      <span className="text-sm font-semibold text-gray-600">
+                        Cross-Promo
+                      </span>
+                    </div>
+                    <p className="text-[#001134] font-bold">
+                      {business.cross_promotion_preference}
+                    </p>
+                  </div>
+                )}
+
+                {business.social_audience_size && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-5 h-5 text-[#66FFFF]" />
+                      <span className="text-sm font-semibold text-gray-600">
+                        Social Audience
+                      </span>
+                    </div>
+                    <p className="text-[#001134] font-bold">
+                      {business.social_audience_size}
+                    </p>
+                  </div>
+                )}
+
+                {business.email_list_size && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Mail className="w-5 h-5 text-[#6666FF]" />
+                      <span className="text-sm font-semibold text-gray-600">
+                        Email List
+                      </span>
+                    </div>
+                    <p className="text-[#001134] font-bold">
+                      {business.email_list_size}
+                    </p>
+                  </div>
+                )}
+
+                {business.email_open_rate && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BarChart3 className="w-5 h-5 text-[#66FFFF]" />
+                      <span className="text-sm font-semibold text-gray-600">
+                        Open Rate
+                      </span>
+                    </div>
+                    <p className="text-[#001134] font-bold">
+                      {business.email_open_rate}
+                    </p>
+                  </div>
+                )}
+
+                {business.number_of_offers && (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Package className="w-5 h-5 text-[#6666FF]" />
+                      <span className="text-sm font-semibold text-gray-600">
+                        Offers
+                      </span>
+                    </div>
+                    <p className="text-[#001134] font-bold">
+                      {business.number_of_offers}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button className="relative w-full px-6 py-4 bg-gradient-to-r from-[#FF1493] to-[#FF69FF] rounded-xl font-bold transition-all hover:shadow-xl group flex items-center justify-center gap-2">
+              <span className="absolute inset-[2px] bg-white rounded-[10px] group-hover:bg-transparent transition-all"></span>
+              <MessageCircle className="w-5 h-5 relative z-10 text-[#FF1493] group-hover:text-white transition-colors" />
+              <span className="relative z-10 bg-gradient-to-r from-[#FF1493] to-[#FF69FF] bg-clip-text text-transparent group-hover:text-white transition-colors">
+                Message Business
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
