@@ -137,12 +137,9 @@ Deno.serve(async (req) => {
       if (mode === 'subscription') {
         const { error: createSubscriptionError } = await supabase
           .from('stripe_subscriptions')
-          .upsert({
+          .insert({
             customer_id: newCustomer.id,
             status: 'not_started',
-          }, {
-            onConflict: 'customer_id',
-            ignoreDuplicates: false
           });
 
         if (createSubscriptionError) {
@@ -183,12 +180,9 @@ Deno.serve(async (req) => {
           // Create subscription record for existing customer if missing
           const { error: createSubscriptionError } = await supabase
             .from('stripe_subscriptions')
-            .upsert({
+            .insert({
               customer_id: customerId,
               status: 'not_started',
-            }, {
-              onConflict: 'customer_id',
-              ignoreDuplicates: false
             });
 
           if (createSubscriptionError) {
