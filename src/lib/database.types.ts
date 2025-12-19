@@ -29,6 +29,11 @@ export interface Database {
           referral_code: string | null
           referred_by_user_id: string | null
           referred_by_code: string | null
+          sms_country_iso: string | null
+          sms_country_code: string | null
+          sms_phone_national: string | null
+          sms_phone_e164: string | null
+          sms_can_send: boolean | null
         }
         Insert: {
           id: string
@@ -49,6 +54,11 @@ export interface Database {
           referral_code?: string | null
           referred_by_user_id?: string | null
           referred_by_code?: string | null
+          sms_country_iso?: string | null
+          sms_country_code?: string | null
+          sms_phone_national?: string | null
+          sms_phone_e164?: string | null
+          sms_can_send?: boolean | null
         }
         Update: {
           id?: string
@@ -69,6 +79,11 @@ export interface Database {
           referral_code?: string | null
           referred_by_user_id?: string | null
           referred_by_code?: string | null
+          sms_country_iso?: string | null
+          sms_country_code?: string | null
+          sms_phone_national?: string | null
+          sms_phone_e164?: string | null
+          sms_can_send?: boolean | null
         }
       }
       businesses: {
@@ -76,10 +91,12 @@ export interface Database {
           id: string
           owner_user_id: string
           business_name: string
+          company_name: string | null
           industry: string
           niche: string
           target_audience: string
           website_url: string | null
+          website: string | null
           offer_summary: string | null
           offer_type: string | null
           price_point: string | null
@@ -93,15 +110,44 @@ export interface Database {
           collaboration_types: string[] | null
           created_at: string
           updated_at: string
+          tagline: string | null
+          description: string | null
+          video_url: string | null
+          email: string | null
+          problem_solved: string | null
+          main_offer_type: string | null
+          unique_value: string | null
+          partnership_type: string | null
+          commission_rate: string | null
+          requirements: string | null
+          monetization_type: string | null
+          cross_promotion_preference: string | null
+          founder_name: string | null
+          founder_bio: string | null
+          founder_background: string | null
+          founder_why_started: string | null
+          founder_headshot_url: string | null
+          social_audience_size: string | null
+          email_open_rate: string | null
+          number_of_offers: string | null
+          logo_url: string | null
+          featured: boolean | null
+          partnership_opportunities: string[] | null
+          looking_for: string[] | null
+          primary_offers: Json | null
+          profile_state: string | null
+          interested_offer_types: string[] | null
         }
         Insert: {
           id?: string
           owner_user_id: string
           business_name?: string
+          company_name?: string | null
           industry?: string
           niche?: string
           target_audience?: string
           website_url?: string | null
+          website?: string | null
           offer_summary?: string | null
           offer_type?: string | null
           price_point?: string | null
@@ -115,15 +161,44 @@ export interface Database {
           collaboration_types?: string[] | null
           created_at?: string
           updated_at?: string
+          tagline?: string | null
+          description?: string | null
+          video_url?: string | null
+          email?: string | null
+          problem_solved?: string | null
+          main_offer_type?: string | null
+          unique_value?: string | null
+          partnership_type?: string | null
+          commission_rate?: string | null
+          requirements?: string | null
+          monetization_type?: string | null
+          cross_promotion_preference?: string | null
+          founder_name?: string | null
+          founder_bio?: string | null
+          founder_background?: string | null
+          founder_why_started?: string | null
+          founder_headshot_url?: string | null
+          social_audience_size?: string | null
+          email_open_rate?: string | null
+          number_of_offers?: string | null
+          logo_url?: string | null
+          featured?: boolean | null
+          partnership_opportunities?: string[] | null
+          looking_for?: string[] | null
+          primary_offers?: Json | null
+          profile_state?: string | null
+          interested_offer_types?: string[] | null
         }
         Update: {
           id?: string
           owner_user_id?: string
           business_name?: string
+          company_name?: string | null
           industry?: string
           niche?: string
           target_audience?: string
           website_url?: string | null
+          website?: string | null
           offer_summary?: string | null
           offer_type?: string | null
           price_point?: string | null
@@ -137,6 +212,76 @@ export interface Database {
           collaboration_types?: string[] | null
           created_at?: string
           updated_at?: string
+          tagline?: string | null
+          description?: string | null
+          video_url?: string | null
+          email?: string | null
+          problem_solved?: string | null
+          main_offer_type?: string | null
+          unique_value?: string | null
+          partnership_type?: string | null
+          commission_rate?: string | null
+          requirements?: string | null
+          monetization_type?: string | null
+          cross_promotion_preference?: string | null
+          founder_name?: string | null
+          founder_bio?: string | null
+          founder_background?: string | null
+          founder_why_started?: string | null
+          founder_headshot_url?: string | null
+          social_audience_size?: string | null
+          email_open_rate?: string | null
+          number_of_offers?: string | null
+          logo_url?: string | null
+          featured?: boolean | null
+          partnership_opportunities?: string[] | null
+          looking_for?: string[] | null
+          primary_offers?: Json | null
+          profile_state?: string | null
+          interested_offer_types?: string[] | null
+        }
+      }
+      stripe_customers: {
+        Row: {
+          user_id: string
+          customer_id: string
+          created_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          user_id: string
+          customer_id: string
+          created_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          customer_id?: string
+          created_at?: string
+          deleted_at?: string | null
+        }
+      }
+      stripe_subscriptions: {
+        Row: {
+          id: string
+          customer_id: string
+          subscription_id: string | null
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          customer_id: string
+          subscription_id?: string | null
+          status: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          customer_id?: string
+          subscription_id?: string | null
+          status?: string
+          created_at?: string
         }
       }
       connections: {
@@ -462,6 +607,67 @@ export interface Database {
           paid_at?: string | null
           paid_method?: string | null
           paid_notes?: string | null
+          created_at?: string
+        }
+      }
+      offer_affiliate_clicks: {
+        Row: {
+          id: string
+          offer_id: string
+          affiliate_user_id: string
+          clicked_at: string
+          ip_address: string | null
+          user_agent: string | null
+          referrer_url: string | null
+          converted: boolean
+          converted_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          offer_id: string
+          affiliate_user_id: string
+          clicked_at?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          referrer_url?: string | null
+          converted?: boolean
+          converted_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          offer_id?: string
+          affiliate_user_id?: string
+          clicked_at?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          referrer_url?: string | null
+          converted?: boolean
+          converted_at?: string | null
+          created_at?: string
+        }
+      }
+      offer_affiliate_codes: {
+        Row: {
+          id: string
+          user_id: string
+          offer_id: string
+          short_code: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          offer_id: string
+          short_code: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          offer_id?: string
+          short_code?: string
           created_at?: string
         }
       }

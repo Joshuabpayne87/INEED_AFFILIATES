@@ -27,6 +27,8 @@ import { Connections } from './pages/Connections';
 import { Settings } from './pages/Settings';
 import { TermsOfService } from './pages/TermsOfService';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { MyLeads } from './pages/MyLeads';
+import { Messages } from './pages/Messages';
 
 function ProtectedRoute({ children, requireOnboarding = false, requireSubscription = false }: {
   children: React.ReactNode;
@@ -36,7 +38,9 @@ function ProtectedRoute({ children, requireOnboarding = false, requireSubscripti
   const { user, loading } = useAuth();
   const [checking, setChecking] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
-  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+
+  // BYPASS: Skip subscription checks for development
+  const BYPASS_SUBSCRIPTION = true;
 
   useEffect(() => {
     async function checkUserStatus() {
@@ -59,26 +63,6 @@ function ProtectedRoute({ children, requireOnboarding = false, requireSubscripti
           business?.niche
         );
         setHasCompletedOnboarding(onboardingComplete);
-
-        const { data: stripeCustomer } = await supabase
-          .from('stripe_customers')
-          .select('customer_id')
-          .eq('user_id', user.id)
-          .is('deleted_at', null)
-          .maybeSingle();
-
-        if (stripeCustomer?.customer_id) {
-          const { data: subscription } = await supabase
-            .from('stripe_subscriptions')
-            .select('status')
-            .eq('customer_id', stripeCustomer.customer_id)
-            .eq('status', 'active')
-            .maybeSingle();
-
-          setHasActiveSubscription(!!subscription);
-        } else {
-          setHasActiveSubscription(false);
-        }
       } catch (error) {
         console.error('Error checking user status:', error);
       } finally {
@@ -103,7 +87,9 @@ function ProtectedRoute({ children, requireOnboarding = false, requireSubscripti
     return <Navigate to="/login" replace />;
   }
 
-  if (requireSubscription && !hasActiveSubscription) {
+  // BYPASS: Skip subscription requirement for development
+  if (requireSubscription && !BYPASS_SUBSCRIPTION) {
+    // Subscription check disabled
     return <Navigate to="/pricing" replace />;
   }
 
@@ -118,6 +104,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const [checking, setChecking] = useState(true);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
+
+  // BYPASS: Skip subscription checks for development
+  const BYPASS_SUBSCRIPTION = true;
 
   useEffect(() => {
     async function checkUserStatus() {
@@ -142,6 +131,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
         if (!onboardingComplete) {
           setRedirectTo('/onboarding');
+        } else if (BYPASS_SUBSCRIPTION) {
+          // BYPASS: Go straight to dashboard
+          setRedirectTo('/dashboard');
         } else {
           const { data: stripeCustomer } = await supabase
             .from('stripe_customers')
@@ -237,6 +229,8 @@ function App() {
             </ProtectedRoute>
           }>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/leads" element={<MyLeads />} />
+            <Route path="/messages" element={<Messages />} />
             <Route path="/directory" element={<PartnershipDirectory />} />
             <Route path="/business/:id" element={<BusinessProfile />} />
             <Route path="/marketplace" element={<OfferMarketplace />} />

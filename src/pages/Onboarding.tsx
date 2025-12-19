@@ -146,7 +146,7 @@ export function Onboarding() {
   const [showBookingModal, setShowBookingModal] = useState(false);
 
   const [formData, setFormData] = useState({
-    business_name: '',
+    company_name: '',
     tagline: '',
     website_url: '',
     industry: '',
@@ -179,8 +179,8 @@ export function Onboarding() {
 
     try {
       const businessData = {
-        company_name: formData.business_name,
-        business_name: formData.business_name,
+        company_name: formData.company_name,
+        business_name: formData.company_name,
         tagline: formData.tagline || null,
         website: formData.website_url || null,
         industry: formData.industry || '',
@@ -279,8 +279,8 @@ export function Onboarding() {
               </label>
               <input
                 type="text"
-                name="business_name"
-                value={formData.business_name}
+                name="company_name"
+                value={formData.company_name}
                 onChange={handleChange}
                 required
                 placeholder="Your Company Inc."

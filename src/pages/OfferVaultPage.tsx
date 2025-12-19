@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
-import { ExternalLink, Trash2, Eye, AlertCircle, Copy, Check, MousePointer, Users, TrendingUp, DollarSign, Gift } from 'lucide-react';
+import { ExternalLink, Trash2, Eye, AlertCircle, Copy, Check, MousePointer, Users, TrendingUp, DollarSign, Gift, Link2, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { OfferVaultEntry } from '../types/offerVault';
 import { displayPrice } from '../lib/currencyUtils';
 import { getUserReferralCode, getReferralStats, buildReferralLink, ReferralStats } from '../lib/referralUtils';
+import { getOrCreateOfferAffiliateCode, buildOfferAffiliateLink, getOfferAffiliateStats, OfferAffiliateStats } from '../lib/offerAffiliateUtils';
 
 export function OfferVaultPage() {
   const navigate = useNavigate();
@@ -17,6 +18,10 @@ export function OfferVaultPage() {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
   const [copied, setCopied] = useState(false);
+  const [offerShortCodes, setOfferShortCodes] = useState<Record<string, string>>({});
+  const [offerStats, setOfferStats] = useState<Record<string, OfferAffiliateStats>>({});
+  const [generatingCode, setGeneratingCode] = useState<string | null>(null);
+  const [copiedOfferId, setCopiedOfferId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -24,6 +29,49 @@ export function OfferVaultPage() {
       loadReferralData();
     }
   }, [user]);
+
+  // Load existing affiliate codes when entries change
+  useEffect(() => {
+    if (user && entries.length > 0) {
+      loadExistingAffiliateCodes();
+    }
+  }, [entries, user]);
+
+  const loadExistingAffiliateCodes = async () => {
+    if (!user) return;
+    try {
+      const offerIds = entries.map(e => e.offer_id);
+      const { data: codes } = await supabase
+        .from('offer_affiliate_codes')
+        .select('offer_id, short_code')
+        .eq('user_id', user.id)
+        .in('offer_id', offerIds);
+
+      if (codes && codes.length > 0) {
+        const codeMap: Record<string, string> = {};
+        codes.forEach(c => {
+          codeMap[c.offer_id] = c.short_code;
+        });
+        setOfferShortCodes(codeMap);
+
+        // Load stats for each offer with a code
+        const statsPromises = codes.map(c =>
+          getOfferAffiliateStats(user.id, c.offer_id).then(stats => ({
+            offerId: c.offer_id,
+            stats,
+          }))
+        );
+        const statsResults = await Promise.all(statsPromises);
+        const statsMap: Record<string, OfferAffiliateStats> = {};
+        statsResults.forEach(r => {
+          statsMap[r.offerId] = r.stats;
+        });
+        setOfferStats(statsMap);
+      }
+    } catch (error) {
+      console.error('Error loading affiliate codes:', error);
+    }
+  };
 
   const loadReferralData = async () => {
     if (!user) return;
@@ -46,6 +94,35 @@ export function OfferVaultPage() {
       await navigator.clipboard.writeText(link);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+
+  const generateOfferShortLink = async (offerId: string) => {
+    if (!user || generatingCode) return;
+    setGeneratingCode(offerId);
+    try {
+      const code = await getOrCreateOfferAffiliateCode(user.id, offerId);
+      if (code) {
+        setOfferShortCodes(prev => ({ ...prev, [offerId]: code }));
+        // Also load stats for this offer
+        const stats = await getOfferAffiliateStats(user.id, offerId);
+        setOfferStats(prev => ({ ...prev, [offerId]: stats }));
+      }
+    } catch (error) {
+      console.error('Error generating short link:', error);
+    } finally {
+      setGeneratingCode(null);
+    }
+  };
+
+  const copyOfferShortLink = async (offerId: string, shortCode: string) => {
+    try {
+      const link = buildOfferAffiliateLink(shortCode);
+      await navigator.clipboard.writeText(link);
+      setCopiedOfferId(offerId);
+      setTimeout(() => setCopiedOfferId(null), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
     }
@@ -393,6 +470,9 @@ export function OfferVaultPage() {
                   Affiliate Link
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  prtnr.live Link
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -498,6 +578,53 @@ export function OfferVaultPage() {
                           placeholder="Add affiliate link"
                           className="w-full min-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#6666FF] focus:border-transparent"
                         />
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      {isPending ? (
+                        <span className="text-xs text-gray-400 italic">Locked until approved</span>
+                      ) : offerShortCodes[entry.offer_id] ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
+                              prtnr.live/{offerShortCodes[entry.offer_id]}
+                            </code>
+                            <button
+                              onClick={() => copyOfferShortLink(entry.offer_id, offerShortCodes[entry.offer_id])}
+                              className={`p-1 rounded transition-colors ${
+                                copiedOfferId === entry.offer_id
+                                  ? 'bg-green-100 text-green-600'
+                                  : 'hover:bg-gray-100 text-gray-600'
+                              }`}
+                              title="Copy link"
+                            >
+                              {copiedOfferId === entry.offer_id ? (
+                                <Check className="w-3.5 h-3.5" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                          {offerStats[entry.offer_id] && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <MousePointer className="w-3 h-3" />
+                              <span>{offerStats[entry.offer_id].totalClicks} clicks</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => generateOfferShortLink(entry.offer_id)}
+                          disabled={generatingCode === entry.offer_id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {generatingCode === entry.offer_id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Link2 className="w-3 h-3" />
+                          )}
+                          Generate Link
+                        </button>
                       )}
                     </td>
                     <td className="px-4 py-4">

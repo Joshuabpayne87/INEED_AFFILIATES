@@ -77,13 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error('Failed to create user account');
     }
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for database trigger to create user record
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     const now = new Date().toISOString();
 
+    // First try to update (if trigger created the user)
     const { error: updateError } = await supabase
       .from('users')
       .update({
+        first_name: firstName,
+        last_name: lastName,
         sms_country_iso: phoneData.countryIso,
         sms_country_code: phoneData.countryCode,
         sms_phone_national: phoneData.phoneNational,
@@ -96,9 +100,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .eq('id', data.user.id);
 
+    // If update fails (user doesn't exist), try to insert
     if (updateError) {
-      console.error('Failed to update user data:', updateError);
-      throw updateError;
+      console.log('User update failed, attempting insert:', updateError.message);
+
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: data.user.id,
+          email: email,
+          first_name: firstName,
+          last_name: lastName,
+          role: 'user',
+          sms_country_iso: phoneData.countryIso,
+          sms_country_code: phoneData.countryCode,
+          sms_phone_national: phoneData.phoneNational,
+          sms_phone_e164: phoneData.phoneE164,
+          sms_can_send: phoneData.canSend,
+          communication_consent: communicationConsent,
+          communication_consent_at: communicationConsent ? now : null,
+          communication_consent_source: 'signup',
+          email_verified_at: now,
+        });
+
+      if (insertError) {
+        // If insert also fails due to conflict, the trigger created it - try update again
+        if (insertError.code === '23505') {
+          const { error: retryError } = await supabase
+            .from('users')
+            .update({
+              first_name: firstName,
+              last_name: lastName,
+              sms_country_iso: phoneData.countryIso,
+              sms_country_code: phoneData.countryCode,
+              sms_phone_national: phoneData.phoneNational,
+              sms_phone_e164: phoneData.phoneE164,
+              sms_can_send: phoneData.canSend,
+              communication_consent: communicationConsent,
+              communication_consent_at: communicationConsent ? now : null,
+              communication_consent_source: 'signup',
+              email_verified_at: now,
+            })
+            .eq('id', data.user.id);
+
+          if (retryError) {
+            console.error('Failed to update user data on retry:', retryError);
+          }
+        } else {
+          console.error('Failed to insert user data:', insertError);
+          throw insertError;
+        }
+      }
     }
   };
 

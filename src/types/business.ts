@@ -52,6 +52,7 @@ export interface BusinessProfile {
 export function isProfileComplete(b: BusinessProfile | null): boolean {
   if (!b) return false;
 
+  // Only core fields are strictly required for initial launch
   const requiredStrings = [
     b.company_name,
     b.website,
@@ -59,40 +60,12 @@ export function isProfileComplete(b: BusinessProfile | null): boolean {
     b.niche,
     b.partnership_type,
     b.main_offer_type,
-    b.monetization_type,
-    b.tagline,
-    b.description,
-    b.problem_solved,
-    b.target_audience,
-    b.unique_value,
-    b.founder_name,
-    b.founder_bio,
-    b.founder_background,
-    b.founder_why_started,
-    b.social_audience_size,
-    b.email_list_size,
-    b.email_open_rate,
-    b.number_of_offers,
-    b.commission_rate,
-    b.requirements,
-    b.cross_promotion_preference,
-    b.contact_name,
-    b.email,
-    b.calendar_link,
+    b.email
   ];
 
   const anyEmpty = requiredStrings.some(
     (value) => !value || String(value).trim().length === 0
   );
 
-  if (anyEmpty) return false;
-
-  const hasPartnershipOpps =
-    typeof b.partnership_opportunities === 'string' &&
-    b.partnership_opportunities.trim().length > 0;
-
-  const hasLookingFor =
-    Array.isArray(b.looking_for) && b.looking_for.length > 0;
-
-  return hasPartnershipOpps && hasLookingFor;
+  return !anyEmpty;
 }

@@ -17,19 +17,29 @@ import {
   ChevronLeft,
   ChevronRight,
   UserPlus,
+  MessageSquare,
+  Target,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
+// Main Section
+const MAIN_NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/directory', label: 'Directory', icon: Users },
-  { path: '/offers', label: 'Marketplace', icon: ShoppingBag },
-  { path: '/offer-vault', label: 'Offer Vault', icon: FolderOpen },
-  { path: '/crm', label: 'Partner CRM', icon: Kanban },
-  { path: '/follow-up', label: 'Follow Up', icon: ClipboardList },
-  { path: '/connections', label: 'Connections', icon: Link2 },
+  { path: '/leads', label: 'My Leads', icon: Target },
 ];
 
-const BOTTOM_NAV_ITEMS = [
+// Partnerships Section
+const PARTNERSHIPS_NAV_ITEMS = [
+  { path: '/connections', label: 'Connections', icon: Link2 },
+  { path: '/messages', label: 'Messages', icon: MessageSquare },
+  { path: '/directory', label: 'Partner Directory', icon: Users },
+  { path: '/offers', label: 'Offers Marketplace', icon: ShoppingBag },
+  { path: '/offer-vault', label: 'Offer Vault', icon: FolderOpen },
+  { path: '/crm', label: 'Partner CRM', icon: Kanban },
+  { path: '/follow-up', label: 'Tasks', icon: ClipboardList },
+];
+
+// Account Section
+const ACCOUNT_NAV_ITEMS = [
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -98,54 +108,104 @@ export function CRMSidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <ul className="space-y-1">
-          {NAV_ITEMS.map((item) => (
-            <li key={item.path}>
-              <NavLink
-                to={item.path}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
-                    isActive
-                      ? 'bg-gradient-to-r from-primary/20 to-cyan/10 text-white'
-                      : 'text-white/60 hover:bg-white/5 hover:text-white'
-                  }`
-                }
+        {/* Main Section */}
+        <div className="mb-4">
+          {!collapsed && (
+            <p className="px-3 mb-2 text-xs font-semibold text-white/40 uppercase tracking-wider">Main</p>
+          )}
+          <ul className="space-y-1">
+            {MAIN_NAV_ITEMS.map((item) => (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                      isActive
+                        ? 'bg-gradient-to-r from-primary/20 to-cyan/10 text-white'
+                        : 'text-white/60 hover:bg-white/5 hover:text-white'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        className={`w-5 h-5 flex-shrink-0 ${
+                          isActive ? 'text-cyan' : 'text-white/60 group-hover:text-white'
+                        }`}
+                      />
+                      {!collapsed && (
+                        <span className="font-medium text-sm truncate">{item.label}</span>
+                      )}
+                      {isActive && !collapsed && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan" />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Partnerships Section */}
+        <div className="mb-4">
+          {!collapsed && (
+            <p className="px-3 mb-2 text-xs font-semibold text-white/40 uppercase tracking-wider">Partnerships</p>
+          )}
+          <ul className="space-y-1">
+            {PARTNERSHIPS_NAV_ITEMS.map((item) => (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
+                      isActive
+                        ? 'bg-gradient-to-r from-primary/20 to-cyan/10 text-white'
+                        : 'text-white/60 hover:bg-white/5 hover:text-white'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        className={`w-5 h-5 flex-shrink-0 ${
+                          isActive ? 'text-cyan' : 'text-white/60 group-hover:text-white'
+                        }`}
+                      />
+                      {!collapsed && (
+                        <span className="font-medium text-sm truncate">{item.label}</span>
+                      )}
+                      {isActive && !collapsed && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan" />
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+            {/* Invite Friends Button */}
+            <li>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group text-white/60 hover:bg-white/5 hover:text-white"
               >
-                {({ isActive }) => (
-                  <>
-                    <item.icon
-                      className={`w-5 h-5 flex-shrink-0 ${
-                        isActive ? 'text-cyan' : 'text-white/60 group-hover:text-white'
-                      }`}
-                    />
-                    {!collapsed && (
-                      <span className="font-medium text-sm truncate">{item.label}</span>
-                    )}
-                    {isActive && !collapsed && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan" />
-                    )}
-                  </>
+                <UserPlus className="w-5 h-5 flex-shrink-0 text-white/60 group-hover:text-white" />
+                {!collapsed && (
+                  <span className="font-medium text-sm truncate">Invite Friends</span>
                 )}
-              </NavLink>
+              </button>
             </li>
-          ))}
-        </ul>
+          </ul>
+        </div>
       </nav>
 
       <div className="px-3 pb-3 border-t border-white/10 pt-3">
+        {/* Account Section */}
+        {!collapsed && (
+          <p className="px-3 mb-2 text-xs font-semibold text-white/40 uppercase tracking-wider">Account</p>
+        )}
         <ul className="space-y-1 mb-3">
-          <li>
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group text-white/60 hover:bg-white/5 hover:text-white"
-            >
-              <UserPlus className="w-5 h-5 flex-shrink-0 text-white/60 group-hover:text-white" />
-              {!collapsed && (
-                <span className="font-medium text-sm truncate">Invite Friends</span>
-              )}
-            </button>
-          </li>
-          {BOTTOM_NAV_ITEMS.map((item) => (
+          {ACCOUNT_NAV_ITEMS.map((item) => (
             <li key={item.path}>
               <NavLink
                 to={item.path}

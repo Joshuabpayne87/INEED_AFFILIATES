@@ -141,11 +141,44 @@ export async function acceptConnectionRequest(
           link: '/connections',
         });
 
-      await supabase
-        .from('offer_vault')
-        .update({ status: 'approved' })
-        .or(`and(user_id.eq.${connection.requester_user_id},business_id.in.(select id from businesses where owner_user_id=${connection.recipient_user_id})),and(user_id.eq.${connection.recipient_user_id},business_id.in.(select id from businesses where owner_user_id=${connection.requester_user_id}))`)
-        .eq('status', 'pending_connection');
+      // Get business IDs for both users to update offer vault status
+      const { data: businesses } = await supabase
+        .from('businesses')
+        .select('id, owner_user_id')
+        .in('owner_user_id', [connection.requester_user_id, connection.recipient_user_id]);
+
+      if (businesses && businesses.length > 0) {
+        const requesterBusiness = businesses.find(b => b.owner_user_id === connection.requester_user_id);
+        const recipientBusiness = businesses.find(b => b.owner_user_id === connection.recipient_user_id);
+
+        const updates = [];
+        
+        if (recipientBusiness) {
+          updates.push(
+            supabase
+              .from('offer_vault')
+              .update({ status: 'approved' })
+              .eq('user_id', connection.requester_user_id)
+              .eq('business_id', recipientBusiness.id)
+              .eq('status', 'pending_connection')
+          );
+        }
+
+        if (requesterBusiness) {
+          updates.push(
+            supabase
+              .from('offer_vault')
+              .update({ status: 'approved' })
+              .eq('user_id', connection.recipient_user_id)
+              .eq('business_id', requesterBusiness.id)
+              .eq('status', 'pending_connection')
+          );
+        }
+
+        if (updates.length > 0) {
+          await Promise.all(updates);
+        }
+      }
     }
 
     return { success: true };
