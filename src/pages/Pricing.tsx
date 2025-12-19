@@ -7,26 +7,19 @@ import { Check, Crown, Loader2, Zap, TrendingUp, Users, Sparkles } from 'lucide-
 import { STRIPE_PRODUCTS } from '../stripe-config';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { CheckoutModal } from '../components/CheckoutModal';
 
 export function Pricing() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
-  function openCheckoutModal(product: any) {
+  async function handleCheckout(tier: string, mode: 'payment' | 'subscription') {
     if (!user) {
       navigate('/login');
       return;
     }
-    setSelectedProduct(product);
-    setCheckoutOpen(true);
-  }
 
-  async function handleCheckout(tier: string, mode: 'payment' | 'subscription', promoCode: string) {
     setLoading(tier);
     setError('');
 
@@ -48,7 +41,6 @@ export function Pricing() {
           success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${window.location.origin}/pricing`,
           mode,
-          promo_code: promoCode || undefined,
         }),
       });
 
@@ -68,7 +60,6 @@ export function Pricing() {
       setError(error.message || 'Failed to start checkout process');
     } finally {
       setLoading(null);
-      setCheckoutOpen(false);
     }
   }
 
@@ -206,7 +197,7 @@ export function Pricing() {
             </div>
 
             <Button
-              onClick={() => openCheckoutModal(product)}
+              onClick={() => handleCheckout(product.tier, product.mode)}
               disabled={loading === product.tier}
               className={`w-full text-lg py-6 font-bold transition-all duration-200 ${
                 product.name === 'Launch Special Lifetime'
@@ -301,16 +292,6 @@ export function Pricing() {
           All prices in USD • Secure checkout powered by Stripe
         </p>
       </div>
-
-      {selectedProduct && (
-        <CheckoutModal
-          isOpen={checkoutOpen}
-          onClose={() => setCheckoutOpen(false)}
-          onProceeed={(promoCode) => handleCheckout(selectedProduct.tier, selectedProduct.mode, promoCode)}
-          productName={selectedProduct.name}
-          isLoading={loading === selectedProduct.tier}
-        />
-      )}
     </div>
   );
 }
