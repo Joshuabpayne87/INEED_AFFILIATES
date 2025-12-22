@@ -123,6 +123,7 @@ const INTERESTED_OFFER_TYPES = [
   'Financial Services',
   'Equity / Investment',
   'Other',
+  'None',
 ];
 
 
