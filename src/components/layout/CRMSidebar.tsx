@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useSidebar } from './AppLayout';
 import { InviteFriendsModal } from '../InviteFriendsModal';
+import { getUnreadMessageCount } from '../../lib/messagingUtils';
 import {
   LayoutDashboard,
   Users,
@@ -50,6 +51,7 @@ export function CRMSidebar() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -64,10 +66,38 @@ export function CRMSidebar() {
           setFirstName(data.first_name || '');
           setLastName(data.last_name || '');
         }
+
+        // Load unread message count
+        const count = await getUnreadMessageCount(user.id);
+        setUnreadMessageCount(count);
       }
     };
 
     loadUserProfile();
+
+    // Subscribe to message notifications for real-time updates
+    if (user) {
+      const channel = supabase
+        .channel('sidebar-message-notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'message_notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          async () => {
+            const count = await getUnreadMessageCount(user.id);
+            setUnreadMessageCount(count);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   const handleSignOut = async () => {
@@ -153,36 +183,44 @@ export function CRMSidebar() {
             <p className="px-3 mb-2 text-xs font-semibold text-white/40 uppercase tracking-wider">Partnerships</p>
           )}
           <ul className="space-y-1">
-            {PARTNERSHIPS_NAV_ITEMS.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group ${
-                      isActive
-                        ? 'bg-gradient-to-r from-primary/20 to-cyan/10 text-white'
-                        : 'text-white/60 hover:bg-white/5 hover:text-white'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon
-                        className={`w-5 h-5 flex-shrink-0 ${
-                          isActive ? 'text-cyan' : 'text-white/60 group-hover:text-white'
-                        }`}
-                      />
-                      {!collapsed && (
-                        <span className="font-medium text-sm truncate">{item.label}</span>
-                      )}
-                      {isActive && !collapsed && (
-                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan" />
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
+            {PARTNERSHIPS_NAV_ITEMS.map((item) => {
+              const isMessages = item.path === '/messages';
+              return (
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${
+                        isActive
+                          ? 'bg-gradient-to-r from-primary/20 to-cyan/10 text-white'
+                          : 'text-white/60 hover:bg-white/5 hover:text-white'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon
+                          className={`w-5 h-5 flex-shrink-0 ${
+                            isActive ? 'text-cyan' : 'text-white/60 group-hover:text-white'
+                          }`}
+                        />
+                        {!collapsed && (
+                          <span className="font-medium text-sm truncate">{item.label}</span>
+                        )}
+                        {isMessages && unreadMessageCount > 0 && (
+                          <span className="ml-auto w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center flex-shrink-0">
+                            {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                          </span>
+                        )}
+                        {isActive && !collapsed && !isMessages && (
+                          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan" />
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              );
+            })}
             {/* Invite Friends Button */}
             <li>
               <button

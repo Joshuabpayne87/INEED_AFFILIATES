@@ -333,7 +333,7 @@ export function OfferVaultPage() {
         </h1>
         <p className="text-gray-600">Your personal offers to promote</p>
         <p className="text-sm text-gray-500 mt-2">
-          {entries.length + 1} {entries.length === 0 ? 'offer' : 'offers'} saved
+          {entries.length} {entries.length === 1 ? 'offer' : 'offers'} saved
         </p>
       </div>
 
@@ -431,85 +431,77 @@ export function OfferVaultPage() {
         </div>
       </Card>
 
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-lg overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Offer
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  OFFER
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Company
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  COMPANY
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Partner Name
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  PARTNER NAME
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  STATUS
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Affiliate Sign Up
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  AFFILIATE SIGN UP
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Price
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  PRICE
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Commission
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  COMMISSION
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Target Client
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-200">
+                  TARGET CLIENT
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Commission Type
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Portal Login Link
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Affiliate Link
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  prtnr.live Link
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Actions
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  COMMISSION TYPE
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200">
               {entries.map((entry) => {
                 const isPending = entry.status === 'pending_connection';
-                const rowOpacity = isPending ? 'opacity-60' : '';
 
                 return (
                   <tr
                     key={entry.id}
-                    className={`hover:bg-gray-50 transition-colors ${rowOpacity} ${isPending ? 'bg-gray-50/50' : ''}`}
+                    className={`hover:bg-gray-50 transition-colors ${isPending ? 'opacity-70' : ''}`}
                   >
-                    <td className="px-4 py-4">
-                      <div className="text-sm font-semibold text-[#001134]">{entry.offer_name}</div>
+                    <td className="px-6 py-4 border-r border-gray-200">
+                      <button
+                        onClick={() => navigate(`/business/${entry.business_id}`)}
+                        className="text-sm font-semibold text-[#001134] hover:text-[#6666FF] hover:underline text-left"
+                      >
+                        {entry.offer_name}
+                      </button>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4 border-r border-gray-200">
                       <div className="text-sm text-gray-900">{entry.company_name}</div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4 border-r border-gray-200">
                       <div className="text-sm text-gray-900">{entry.partner_name}</div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4 border-r border-gray-200">
                       {isPending ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
                           Pending Connection Approval
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                           Approved
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4 border-r border-gray-200">
                       {isPending ? (
-                        <span className="text-xs text-gray-400 italic">Locked until approved</span>
+                        <span className="text-sm text-gray-500">Locked until approved</span>
                       ) : entry.affiliate_signup_link ? (
                         <a
                           href={entry.affiliate_signup_link}
@@ -521,129 +513,24 @@ export function OfferVaultPage() {
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       ) : (
-                        <span className="text-xs text-gray-400">No link yet</span>
+                        <span className="text-sm text-gray-500">No link yet</span>
                       )}
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm font-semibold text-gray-900">{displayPrice(entry.price)}</div>
+                    <td className="px-6 py-4 border-r border-gray-200">
+                      <div className="text-sm font-bold text-gray-900">{displayPrice(entry.price)}</div>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-gray-700 max-w-xs truncate" title={entry.commission}>
+                    <td className="px-6 py-4 border-r border-gray-200">
+                      <div className="text-sm text-gray-700" title={entry.commission}>
                         {entry.commission}
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4 border-r border-gray-200">
                       <div className="text-sm text-gray-700 max-w-xs truncate" title={entry.target_client}>
                         {entry.target_client}
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">{entry.commission_type}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                      {isPending ? (
-                        <span className="text-xs text-gray-400 italic">Locked until approved</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={entry.portal_login_link}
-                          onChange={(e) => {
-                            setEntries(prev =>
-                              prev.map(item =>
-                                item.id === entry.id ? { ...item, portal_login_link: e.target.value } : item
-                              )
-                            );
-                          }}
-                          onBlur={() => updateField(entry.id, 'portal_login_link', entry.portal_login_link)}
-                          placeholder="Add portal URL"
-                          className="w-full min-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#6666FF] focus:border-transparent"
-                        />
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      {isPending ? (
-                        <span className="text-xs text-gray-400 italic">Locked until approved</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={entry.affiliate_link}
-                          onChange={(e) => {
-                            setEntries(prev =>
-                              prev.map(item =>
-                                item.id === entry.id ? { ...item, affiliate_link: e.target.value } : item
-                              )
-                            );
-                          }}
-                          onBlur={() => updateField(entry.id, 'affiliate_link', entry.affiliate_link)}
-                          placeholder="Add affiliate link"
-                          className="w-full min-w-[200px] px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#6666FF] focus:border-transparent"
-                        />
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      {isPending ? (
-                        <span className="text-xs text-gray-400 italic">Locked until approved</span>
-                      ) : offerShortCodes[entry.offer_id] ? (
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
-                              prtnr.live/{offerShortCodes[entry.offer_id]}
-                            </code>
-                            <button
-                              onClick={() => copyOfferShortLink(entry.offer_id, offerShortCodes[entry.offer_id])}
-                              className={`p-1 rounded transition-colors ${
-                                copiedOfferId === entry.offer_id
-                                  ? 'bg-green-100 text-green-600'
-                                  : 'hover:bg-gray-100 text-gray-600'
-                              }`}
-                              title="Copy link"
-                            >
-                              {copiedOfferId === entry.offer_id ? (
-                                <Check className="w-3.5 h-3.5" />
-                              ) : (
-                                <Copy className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          </div>
-                          {offerStats[entry.offer_id] && (
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <MousePointer className="w-3 h-3" />
-                              <span>{offerStats[entry.offer_id].totalClicks} clicks</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => generateOfferShortLink(entry.offer_id)}
-                          disabled={generatingCode === entry.offer_id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {generatingCode === entry.offer_id ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Link2 className="w-3 h-3" />
-                          )}
-                          Generate Link
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => navigate(`/business/${entry.business_id}`)}
-                          className="p-1.5 text-gray-600 hover:text-[#6666FF] hover:bg-gray-100 rounded transition-colors"
-                          title="View Business Profile"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => removeFromVault(entry.id)}
-                          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Remove from Vault"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 );

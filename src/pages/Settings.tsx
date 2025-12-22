@@ -7,9 +7,12 @@ import { Badge } from '../components/ui/Badge';
 import { TagInput } from '../components/ui/TagInput';
 import { Select } from '../components/ui/Select';
 import { MultiSelectChips } from '../components/ui/MultiSelectChips';
+import { FileUpload } from '../components/ui/FileUpload';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrencyInput } from '../lib/currencyUtils';
+import { OfferPriceOption } from '../types/offerPriceOption';
+import { loadOfferPriceOptions, saveOfferPriceOptions } from '../lib/offerPriceOptionsUtils';
 import { User, Building2, CreditCard, Bell, Save, Crown, Check, Package, Plus, CreditCard as Edit2, Trash2, X, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 
 const INDUSTRIES = [
@@ -106,17 +109,6 @@ const INTERESTED_OFFER_TYPES = [
   'Partner Programs',
 ];
 
-const COLLABORATION_TYPES = [
-  'JVs',
-  'Referrals',
-  'Co-Webinars',
-  'Email Swaps',
-  'Podcast Guesting',
-  'Lead Sharing',
-  'Cross-Promotion',
-  'Co-Marketing',
-  'Reseller Partnerships',
-];
 
 const OFFER_TYPES = [
   'SaaS Subscription',
@@ -145,6 +137,8 @@ const PROMO_METHODS = [
   'Paid Ads',
   'Direct Outreach',
   'Referral',
+  'White-Label',
+  'Website Traffic',
   'Other',
 ];
 
@@ -234,7 +228,6 @@ interface BusinessProfileArrays {
   partnership_types: string[];
   looking_for: string[];
   interested_offer_types: string[];
-  collaboration_types: string[];
   payment_methods: string[];
 }
 
@@ -310,7 +303,6 @@ export function Settings() {
     partnership_types: [],
     looking_for: [],
     interested_offer_types: [],
-    collaboration_types: [],
     payment_methods: [],
   });
 
@@ -328,7 +320,8 @@ export function Settings() {
   const [offerForm, setOfferForm] = useState({
     offer_name: '',
     description: '',
-    price_point: '',
+    price_point: '', // Keep for backward compatibility
+    commission_calculation_type: '', // '%' or 'Flat Fee'
     commission_percent: 0,
     offer_type: '',
     promo_methods: [] as string[],
@@ -339,6 +332,7 @@ export function Settings() {
     commission_duration: '',
     offer_notes: '',
     is_active: true,
+    priceOptions: [] as OfferPriceOption[],
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -437,7 +431,6 @@ export function Settings() {
           partnership_types: partnershipTypesArray,
           looking_for: businessData.looking_for || [],
           interested_offer_types: businessData.interested_offer_types || [],
-          collaboration_types: businessData.collaboration_types || [],
           payment_methods: businessData.payment_methods || [],
         });
 
@@ -580,7 +573,6 @@ export function Settings() {
             partnership_opportunities: businessProfile.partnership_opportunities || null,
             looking_for: businessArrays.looking_for.length > 0 ? businessArrays.looking_for : null,
             interested_offer_types: businessArrays.interested_offer_types.length > 0 ? businessArrays.interested_offer_types : null,
-            collaboration_types: businessArrays.collaboration_types.length > 0 ? businessArrays.collaboration_types : null,
             payment_methods: businessArrays.payment_methods.length > 0 ? businessArrays.payment_methods : null,
             business_street_address: businessProfile.business_street_address || null,
             business_city: businessProfile.business_city || null,
@@ -610,13 +602,16 @@ export function Settings() {
     }
   }
 
-  function openOfferModal(offer?: Offer) {
+  async function openOfferModal(offer?: Offer) {
     if (offer) {
       setEditingOffer(offer);
+      // Load price options for this offer
+      const priceOptions = await loadOfferPriceOptions(offer.id);
       setOfferForm({
         offer_name: offer.offer_name,
         description: offer.description,
         price_point: offer.price_point,
+        commission_calculation_type: '', // Will need to be loaded from database if stored
         commission_percent: offer.commission_percent,
         offer_type: offer.offer_type,
         promo_methods: offer.promo_methods || [],
@@ -627,6 +622,7 @@ export function Settings() {
         commission_duration: offer.commission_duration || '',
         offer_notes: offer.offer_notes || '',
         is_active: offer.is_active,
+        priceOptions: priceOptions.length > 0 ? priceOptions : [{ amount: 0, currency: 'USD', frequency: 'per_month', sort_order: 0 }],
       });
     } else {
       setEditingOffer(null);
@@ -634,6 +630,7 @@ export function Settings() {
         offer_name: '',
         description: '',
         price_point: '',
+        commission_calculation_type: '',
         commission_percent: 0,
         offer_type: '',
         promo_methods: [],
@@ -644,6 +641,7 @@ export function Settings() {
         commission_duration: '',
         offer_notes: '',
         is_active: true,
+        priceOptions: [{ amount: 0, currency: 'USD', frequency: 'per_month', sort_order: 0 }],
       });
     }
     setShowOfferModal(true);
@@ -688,9 +686,16 @@ export function Settings() {
           .eq('id', editingOffer.id);
 
         if (error) throw error;
+        
+        // Save price options
+        const priceOptionsResult = await saveOfferPriceOptions(editingOffer.id, offerForm.priceOptions);
+        if (!priceOptionsResult.success) {
+          throw new Error(priceOptionsResult.error || 'Failed to save price options');
+        }
+        
         alert('Offer updated successfully!');
       } else {
-        const { error } = await supabase
+        const { data: newOffer, error } = await supabase
           .from('offers')
           .insert({
             business_id: businessId,
@@ -707,9 +712,19 @@ export function Settings() {
             commission_duration: offerForm.commission_duration || null,
             offer_notes: offerForm.offer_notes || null,
             is_active: offerForm.is_active,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+        if (!newOffer) throw new Error('Failed to create offer');
+        
+        // Save price options for the new offer
+        const priceOptionsResult = await saveOfferPriceOptions(newOffer.id, offerForm.priceOptions);
+        if (!priceOptionsResult.success) {
+          throw new Error(priceOptionsResult.error || 'Failed to save price options');
+        }
+        
         alert('Offer created successfully!');
       }
 
@@ -1133,10 +1148,11 @@ export function Settings() {
                       rows={3}
                     />
                   </div>
-                  <Input
-                    label="Founder Headshot URL (optional)"
+                  <FileUpload
+                    label="Founder Headshot (optional)"
                     value={businessProfile.founder_headshot_url}
-                    onChange={(e) => setBusinessProfile({ ...businessProfile, founder_headshot_url: e.target.value })}
+                    onChange={(url) => setBusinessProfile({ ...businessProfile, founder_headshot_url: url || '' })}
+                    folder="founder-headshots"
                   />
                 </div>
               </Card>
@@ -1254,13 +1270,29 @@ export function Settings() {
                 <h3 className="text-lg font-semibold mb-4">Partnership Details</h3>
                 <div className="space-y-6 max-w-2xl">
                   <div>
-                    <label className="block text-sm text-gray-700 mb-2" style={{ fontFamily: 'Sora, sans-serif', fontWeight: 600 }}>Cross-Promotion Preference</label>
-                    <textarea
-                      value={businessProfile.cross_promotion_preference}
-                      onChange={(e) => setBusinessProfile({ ...businessProfile, cross_promotion_preference: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#6666FF]"
-                      rows={3}
-                    />
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Cross-Promotion Preference
+                    </label>
+                    <div className="flex gap-2">
+                      {[
+                        'Yes we do',
+                        'No we don\'t',
+                        'Maybe, case by case',
+                      ].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setBusinessProfile({ ...businessProfile, cross_promotion_preference: option })}
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all flex-1 ${
+                            businessProfile.cross_promotion_preference === option
+                              ? 'bg-gradient-to-r from-[#6666FF] to-[#66FFFF] text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="bg-gradient-to-br from-purple-50 to-white border-2 border-purple-200 rounded-xl p-5">
@@ -1287,15 +1319,6 @@ export function Settings() {
                       options={INTERESTED_OFFER_TYPES}
                       value={businessArrays.interested_offer_types}
                       onChange={(selected) => setBusinessArrays({ ...businessArrays, interested_offer_types: selected })}
-                    />
-                  </div>
-
-                  <div className="bg-gradient-to-br from-yellow-50 to-white border-2 border-yellow-200 rounded-xl p-5">
-                    <MultiSelectChips
-                      label="Preferred Collaboration Methods"
-                      options={COLLABORATION_TYPES}
-                      value={businessArrays.collaboration_types}
-                      onChange={(selected) => setBusinessArrays({ ...businessArrays, collaboration_types: selected })}
                     />
                   </div>
                 </div>
@@ -1454,7 +1477,7 @@ export function Settings() {
                               )}
                               {offer.commission_type && (
                                 <div>
-                                  <span className="font-semibold text-gray-700">Commission Type:</span>{' '}
+                                  <span className="font-semibold text-gray-700">Commission Recurrence:</span>{' '}
                                   <span className="text-gray-900 capitalize">{offer.commission_type}</span>
                                 </div>
                               )}
@@ -1525,127 +1548,238 @@ export function Settings() {
                   </button>
                 </div>
 
-                <div className="p-6 space-y-4">
-                  <Input
-                    label="Offer Name *"
-                    value={offerForm.offer_name}
-                    onChange={(e) => setOfferForm({ ...offerForm, offer_name: e.target.value })}
-                    placeholder="e.g., Premium Coaching Program"
-                  />
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={offerForm.description}
-                      onChange={(e) => setOfferForm({ ...offerForm, description: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6666FF]"
-                      rows={4}
-                      placeholder="Describe your offer..."
+                <div className="p-6 space-y-6">
+                  {/* Offer Section */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4">
+                    <h4 className="text-lg font-bold text-gray-900 mb-4">Offer</h4>
+                    
+                    <Input
+                      label="Offer Name *"
+                      value={offerForm.offer_name}
+                      onChange={(e) => setOfferForm({ ...offerForm, offer_name: e.target.value })}
+                      placeholder="e.g., Premium Coaching Program"
                     />
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Description
+                      </label>
+                      <textarea
+                        value={offerForm.description}
+                        onChange={(e) => setOfferForm({ ...offerForm, description: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6666FF]"
+                        rows={4}
+                        placeholder="Describe your offer..."
+                      />
+                    </div>
+
+                    {/* Pricing Options Section */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Pricing Options
+                      </label>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Add multiple pricing options (e.g., monthly + annual). All pricing options share the same landing page.
+                      </p>
+                      <p className="text-xs text-gray-500 mb-4">
+                        If you need a different landing page for a different plan, create a separate offer.
+                      </p>
+                      
+                      <div className="space-y-3">
+                        {offerForm.priceOptions.map((option, index) => (
+                          <div key={option.id || `temp-${index}`} className="flex items-start gap-3 p-4 border border-gray-200 rounded-lg bg-white">
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Price
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="1000000"
+                                    step="0.01"
+                                    value={option.amount || ''}
+                                    onChange={(e) => {
+                                      const newOptions = [...offerForm.priceOptions];
+                                      newOptions[index] = {
+                                        ...newOptions[index],
+                                        amount: parseFloat(e.target.value) || 0,
+                                      };
+                                      setOfferForm({ ...offerForm, priceOptions: newOptions });
+                                    }}
+                                    className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6666FF]"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                                {option.amount < 0 && (
+                                  <p className="text-xs text-red-600 mt-1">Amount must be ≥ 0</p>
+                                )}
+                                {option.amount > 1000000 && (
+                                  <p className="text-xs text-red-600 mt-1">Amount must be ≤ 1,000,000</p>
+                                )}
+                              </div>
+                              
+                              <div>
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Frequency
+                                </label>
+                                <select
+                                  value={option.frequency}
+                                  onChange={(e) => {
+                                    const newOptions = [...offerForm.priceOptions];
+                                    newOptions[index] = {
+                                      ...newOptions[index],
+                                      frequency: e.target.value as OfferPriceOption['frequency'],
+                                    };
+                                    setOfferForm({ ...offerForm, priceOptions: newOptions });
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6666FF] text-sm"
+                                >
+                                  <option value="">Select frequency</option>
+                                  <option value="per_month">Per month</option>
+                                  <option value="per_year">Per year</option>
+                                  <option value="lifetime">Lifetime</option>
+                                  <option value="one_time">One-time</option>
+                                </select>
+                              </div>
+                            </div>
+                            
+                            {offerForm.priceOptions.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newOptions = offerForm.priceOptions.filter((_, i) => i !== index);
+                                  setOfferForm({ ...offerForm, priceOptions: newOptions });
+                                }}
+                                className="mt-6 p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Remove price option"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newOptions = [...offerForm.priceOptions, {
+                            amount: 0,
+                            currency: 'USD',
+                            frequency: 'per_month' as const,
+                            sort_order: offerForm.priceOptions.length,
+                          }];
+                          setOfferForm({ ...offerForm, priceOptions: newOptions });
+                        }}
+                        className="mt-3 flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#6666FF] hover:text-[#5555EE] transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add price
+                      </button>
+                    </div>
+
+                    <Select
+                      label="Offer Type"
+                      options={OFFER_TYPES}
+                      value={offerForm.offer_type}
+                      onChange={(value) => setOfferForm({ ...offerForm, offer_type: value })}
+                      placeholder="Select offer type"
+                      allowOther
+                    />
+
+                    <MultiSelectChips
+                      label="Preferred Promotional Methods"
+                      options={PROMO_METHODS}
+                      value={offerForm.promo_methods}
+                      onChange={(selected) => setOfferForm({ ...offerForm, promo_methods: selected })}
+                    />
+
+                    <div>
+                      <Input
+                        label="Offer Landing Page"
+                        value={offerForm.purchase_affiliate_link}
+                        onChange={(e) => setOfferForm({ ...offerForm, purchase_affiliate_link: e.target.value })}
+                        placeholder="https://..."
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        (this is the link for new clients/ customers that affiliates will promote.)
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Notes
+                      </label>
+                      <textarea
+                        value={offerForm.offer_notes}
+                        onChange={(e) => setOfferForm({ ...offerForm, offer_notes: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6666FF]"
+                        rows={3}
+                        placeholder="Additional notes about this offer..."
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={offerForm.is_active}
+                        onChange={(e) => setOfferForm({ ...offerForm, is_active: e.target.checked })}
+                        className="w-5 h-5 text-blue-600 rounded"
+                      />
+                      <label htmlFor="is_active" className="text-sm font-semibold text-gray-700">
+                        Active (visible in marketplace)
+                      </label>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      label="Price"
-                      value={offerForm.price_point}
-                      onChange={(e) => setOfferForm({ ...offerForm, price_point: e.target.value })}
-                      onBlur={(e) => {
-                        const formatted = formatCurrencyInput(e.target.value);
-                        setOfferForm({ ...offerForm, price_point: formatted });
-                      }}
-                      placeholder="e.g., 2,500 or 99/mo"
-                    />
-
-                    <Input
-                      label="Commission %"
-                      type="number"
-                      value={offerForm.commission_percent}
-                      onChange={(e) => setOfferForm({ ...offerForm, commission_percent: parseFloat(e.target.value) || 0 })}
-                      placeholder="e.g., 30"
-                    />
-                  </div>
-
-                  <Select
-                    label="Offer Type"
-                    options={OFFER_TYPES}
-                    value={offerForm.offer_type}
-                    onChange={(value) => setOfferForm({ ...offerForm, offer_type: value })}
-                    placeholder="Select offer type"
-                    allowOther
-                  />
-
-                  <MultiSelectChips
-                    label="Promotional Methods"
-                    options={PROMO_METHODS}
-                    value={offerForm.promo_methods}
-                    onChange={(selected) => setOfferForm({ ...offerForm, promo_methods: selected })}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Commission Section */}
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 space-y-4">
+                    <h4 className="text-lg font-bold text-gray-900 mb-4">Commission</h4>
+                    
                     <Select
                       label="Commission Type"
-                      options={['One-time', 'Recurring']}
-                      value={offerForm.commission_type}
-                      onChange={(value) => setOfferForm({ ...offerForm, commission_type: value })}
+                      options={['%', 'Flat Fee']}
+                      value={offerForm.commission_calculation_type || ''}
+                      onChange={(value) => setOfferForm({ ...offerForm, commission_calculation_type: value })}
                       placeholder="Select commission type"
                     />
 
-                    <Select
-                      label="Commission Duration"
-                      options={['One-time', '1 Year', 'Lifetime']}
-                      value={offerForm.commission_duration}
-                      onChange={(value) => setOfferForm({ ...offerForm, commission_duration: value })}
-                      placeholder="Select duration"
+                    <Input
+                      label="Commission Amount (% or $)"
+                      type="number"
+                      value={offerForm.commission_percent}
+                      onChange={(e) => setOfferForm({ ...offerForm, commission_percent: parseFloat(e.target.value) || 0 })}
+                      placeholder={offerForm.commission_calculation_type === 'Flat Fee' ? 'e.g., 50' : 'e.g., 30'}
                     />
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Notes
-                    </label>
-                    <textarea
-                      value={offerForm.offer_notes}
-                      onChange={(e) => setOfferForm({ ...offerForm, offer_notes: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6666FF]"
-                      rows={3}
-                      placeholder="Additional notes about this offer..."
+                    <div className="grid grid-cols-2 gap-4">
+                      <Select
+                        label="Commission Recurrence"
+                        options={['One-time', 'Recurring']}
+                        value={offerForm.commission_type}
+                        onChange={(value) => setOfferForm({ ...offerForm, commission_type: value })}
+                        placeholder="Select commission recurrence"
+                      />
+
+                      <Select
+                        label="Payout Duration"
+                        options={['One-time', 'Up to 1yr', 'As long as customer keeps paying']}
+                        value={offerForm.commission_duration}
+                        onChange={(value) => setOfferForm({ ...offerForm, commission_duration: value })}
+                        placeholder="Select payout duration"
+                      />
+                    </div>
+
+                    <Input
+                      label="Resources Link"
+                      value={offerForm.resources_link}
+                      onChange={(e) => setOfferForm({ ...offerForm, resources_link: e.target.value })}
+                      placeholder="https://..."
                     />
-                  </div>
-
-                  <Input
-                    label="Resources Link"
-                    value={offerForm.resources_link}
-                    onChange={(e) => setOfferForm({ ...offerForm, resources_link: e.target.value })}
-                    placeholder="https://..."
-                  />
-
-                  <Input
-                    label="Affiliate Signup Link"
-                    value={offerForm.affiliate_signup_link}
-                    onChange={(e) => setOfferForm({ ...offerForm, affiliate_signup_link: e.target.value })}
-                    placeholder="https://..."
-                  />
-
-                  <Input
-                    label="Purchase / Checkout Link"
-                    value={offerForm.purchase_affiliate_link}
-                    onChange={(e) => setOfferForm({ ...offerForm, purchase_affiliate_link: e.target.value })}
-                    placeholder="https://..."
-                  />
-
-                  <div className="flex items-center gap-3 pt-2">
-                    <input
-                      type="checkbox"
-                      id="is_active"
-                      checked={offerForm.is_active}
-                      onChange={(e) => setOfferForm({ ...offerForm, is_active: e.target.checked })}
-                      className="w-5 h-5 text-blue-600 rounded"
-                    />
-                    <label htmlFor="is_active" className="text-sm font-semibold text-gray-700">
-                      Active (visible in marketplace)
-                    </label>
                   </div>
                 </div>
 

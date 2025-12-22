@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { MessagingModal } from '../components/MessagingModal';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { getOrCreateConversation } from '../lib/messagingUtils';
 import { CheckCircle, XCircle, Clock, User, Calendar, MessageCircle, Trophy } from 'lucide-react';
 
 interface Connection {
@@ -63,16 +64,13 @@ interface Favorite {
 
 export function Connections() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('incoming');
   const [connections, setConnections] = useState<Connection[]>([]);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [messagingConnection, setMessagingConnection] = useState<{
-    id: string;
-    recipientId: string;
-    recipientName: string;
-  } | null>(null);
+  const [messagingLoading, setMessagingLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -291,6 +289,30 @@ export function Connections() {
     return url;
   }
 
+  const handleMessageConnection = async (connectionId: string, otherUserId: string) => {
+    if (!user) return;
+
+    setMessagingLoading(connectionId);
+    try {
+      const conversationId = await getOrCreateConversation(
+        user.id,
+        otherUserId,
+        connectionId
+      );
+
+      if (conversationId) {
+        navigate(`/messages?conversation=${conversationId}`);
+      } else {
+        alert('Failed to open conversation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error opening conversation:', error);
+      alert('Failed to open conversation. Please try again.');
+    } finally {
+      setMessagingLoading(null);
+    }
+  };
+
   const tabs = [
     { id: 'incoming' as TabType, label: 'Incoming Requests', icon: null },
     { id: 'outgoing' as TabType, label: 'Sent Requests', icon: null },
@@ -498,14 +520,11 @@ export function Connections() {
                       </Badge>
                       <Button
                         size="sm"
-                        onClick={() => setMessagingConnection({
-                          id: connection.id,
-                          recipientId: otherUserId!,
-                          recipientName: `${otherUser?.first_name} ${otherUser?.last_name}`,
-                        })}
+                        onClick={() => handleMessageConnection(connection.id, otherUserId!)}
+                        disabled={messagingLoading === connection.id}
                       >
                         <MessageCircle className="w-4 h-4 mr-1" />
-                        Message
+                        {messagingLoading === connection.id ? 'Opening...' : 'Message'}
                       </Button>
                     </div>
                   )}
@@ -514,16 +533,6 @@ export function Connections() {
             );
           })}
         </div>
-      )}
-
-      {messagingConnection && (
-        <MessagingModal
-          isOpen={!!messagingConnection}
-          onClose={() => setMessagingConnection(null)}
-          recipientId={messagingConnection.recipientId}
-          recipientName={messagingConnection.recipientName}
-          connectionId={messagingConnection.id}
-        />
       )}
     </div>
   );

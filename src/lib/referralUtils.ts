@@ -100,8 +100,8 @@ export async function getReferralCommissions(userId: string): Promise<ReferralCo
 }
 
 export function buildReferralLink(referralCode: string): string {
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ineedaffiliates.com';
-  return `${baseUrl}/signup?ref=${referralCode}`;
+  // Always use the production domain for referral links
+  return `https://ineedaffiliates.com/signup?ref=${referralCode}`;
 }
 
 export async function trackReferralClick(

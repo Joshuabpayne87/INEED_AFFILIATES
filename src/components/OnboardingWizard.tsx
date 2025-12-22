@@ -4,6 +4,7 @@ import { BusinessProfile, isProfileComplete } from '../types/business';
 import { supabase } from '../lib/supabase';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { FileUpload } from './ui/FileUpload';
 
 interface OnboardingWizardProps {
   onClose: () => void;
@@ -98,20 +99,6 @@ export function OnboardingWizard({ onClose, onComplete, initialData }: Onboardin
     }
   };
 
-  const toggleCollaborationType = (type: string) => {
-    const current = formData.collaboration_types || [];
-    if (current.includes(type)) {
-      setFormData((prev) => ({
-        ...prev,
-        collaboration_types: current.filter(t => t !== type),
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        collaboration_types: [...current, type],
-      }));
-    }
-  };
 
   const toggleLookingFor = (type: string) => {
     const current = formData.looking_for || [];
@@ -403,10 +390,11 @@ export function OnboardingWizard({ onClose, onComplete, initialData }: Onboardin
                   rows={3}
                 />
               </div>
-              <Input
-                label="Founder Headshot URL (optional)"
-                value={formData.founder_headshot_url || ''}
-                onChange={(e) => updateField('founder_headshot_url', e.target.value)}
+              <FileUpload
+                label="Founder Headshot (optional)"
+                value={formData.founder_headshot_url || null}
+                onChange={(url) => updateField('founder_headshot_url', url || '')}
+                folder="founder-headshots"
               />
             </div>
           )}
@@ -484,13 +472,29 @@ export function OnboardingWizard({ onClose, onComplete, initialData }: Onboardin
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Cross-Promotion Preference*</label>
-                <textarea
-                  value={formData.cross_promotion_preference || ''}
-                  onChange={(e) => updateField('cross_promotion_preference', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6666FF]"
-                  rows={3}
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  Cross-Promotion Preference*
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    'Yes we do',
+                    'No we don\'t',
+                    'Maybe, case by case',
+                  ].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => updateField('cross_promotion_preference', option)}
+                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all flex-1 ${
+                        formData.cross_promotion_preference === option
+                          ? 'bg-gradient-to-r from-[#6666FF] to-[#66FFFF] text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -558,40 +562,6 @@ export function OnboardingWizard({ onClose, onComplete, initialData }: Onboardin
                       onClick={() => toggleOfferType(type)}
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                         formData.interested_offer_types?.includes(type)
-                          ? 'bg-gradient-to-r from-[#6666FF] to-[#66FFFF] text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Preferred Collaboration Methods (optional)
-                </label>
-                <p className="text-sm text-gray-600 mb-3">
-                  Select all that apply.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    'JVs',
-                    'Referrals',
-                    'Co-Webinars',
-                    'Email Swaps',
-                    'Podcast Guesting',
-                    'Lead Sharing',
-                    'Cross-Promotion',
-                    'Co-Marketing',
-                    'Reseller Partnerships',
-                  ].map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => toggleCollaborationType(type)}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                        formData.collaboration_types?.includes(type)
                           ? 'bg-gradient-to-r from-[#6666FF] to-[#66FFFF] text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}

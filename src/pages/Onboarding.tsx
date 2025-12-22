@@ -7,7 +7,6 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { MultiSelectChips } from '../components/ui/MultiSelectChips';
 import { AlertCircle } from 'lucide-react';
-import { BookingModal } from '../components/BookingModal';
 
 const INDUSTRIES = [
   'Coaching & Consulting',
@@ -126,24 +125,12 @@ const INTERESTED_OFFER_TYPES = [
   'Other',
 ];
 
-const COLLABORATION_TYPES = [
-  'JVs',
-  'Referrals',
-  'Co-Webinars',
-  'Email Swaps',
-  'Podcast Guesting',
-  'Lead Sharing',
-  'Cross-Promotion',
-  'Co-Marketing',
-  'Reseller Partnerships',
-];
 
 export function Onboarding() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showBookingModal, setShowBookingModal] = useState(false);
 
   const [formData, setFormData] = useState({
     company_name: '',
@@ -158,7 +145,6 @@ export function Onboarding() {
   const [partnershipTypes, setPartnershipTypes] = useState<string[]>([]);
   const [lookingFor, setLookingFor] = useState<string[]>([]);
   const [interestedOfferTypes, setInterestedOfferTypes] = useState<string[]>([]);
-  const [selectedCollabTypes, setSelectedCollabTypes] = useState<string[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -191,7 +177,6 @@ export function Onboarding() {
         monetization_type: formData.monetization_type || null,
         looking_for: lookingFor.length > 0 ? lookingFor : null,
         interested_offer_types: interestedOfferTypes.length > 0 ? interestedOfferTypes : null,
-        collaboration_types: selectedCollabTypes.length > 0 ? selectedCollabTypes : null,
         profile_state: 'draft',
       };
 
@@ -229,8 +214,9 @@ export function Onboarding() {
         if (insertError) throw insertError;
       }
 
-      console.log('Success! Showing booking modal');
-      setShowBookingModal(true);
+      console.log('Success! Redirecting to dashboard');
+      // Redirect to dashboard where the booking modal will show
+      navigate('/dashboard');
     } catch (err: any) {
       console.error('Error submitting form:', err);
       setError(err.message || 'Failed to save business information');
@@ -239,17 +225,8 @@ export function Onboarding() {
     }
   };
 
-  const handleCloseBookingModal = () => {
-    setShowBookingModal(false);
-    navigate('/pricing');
-  };
-
   return (
     <div className="min-h-screen bg-background px-4 py-8">
-      <BookingModal
-        isOpen={showBookingModal}
-        onClose={handleCloseBookingModal}
-      />
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <img src="/logonew2.png" alt="ineedaffiliates.com" className="h-16 mx-auto mb-4" />
@@ -386,15 +363,6 @@ export function Onboarding() {
               />
             </div>
 
-            <div className="bg-gradient-to-br from-yellow-50 to-white border-2 border-yellow-200 rounded-xl p-5">
-              <MultiSelectChips
-                label="Preferred Collaboration Methods"
-                options={COLLABORATION_TYPES}
-                value={selectedCollabTypes}
-                onChange={setSelectedCollabTypes}
-              />
-            </div>
-
             <Button
               type="submit"
               variant="gradient"
@@ -402,7 +370,7 @@ export function Onboarding() {
               loading={loading}
               size="lg"
             >
-              Continue to Pricing
+              Next
             </Button>
           </form>
         </div>

@@ -7,6 +7,7 @@ import { Users, Package, Briefcase, ListTodo, ArrowRight, Calendar, AlertCircle 
 import { ProfileCheckModal } from '../components/ProfileCheckModal';
 import { OnboardingWizard } from '../components/OnboardingWizard';
 import { CreateOfferPrompt } from '../components/CreateOfferPrompt';
+import { BookingModal } from '../components/BookingModal';
 import { BusinessProfile, isProfileComplete } from '../types/business';
 
 interface Stats {
@@ -40,6 +41,7 @@ export function Dashboard() {
   const [userProfile, setUserProfile] = useState<BusinessProfile | null>(null);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
   const [showCreateOfferPrompt, setShowCreateOfferPrompt] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const [userBusinessId, setUserBusinessId] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string>('');
 
@@ -47,7 +49,39 @@ export function Dashboard() {
     loadDashboardData();
     checkProfileStatus();
     loadUserName();
+    checkIfShouldShowBookingModal();
   }, [user]);
+
+  const checkIfShouldShowBookingModal = async () => {
+    if (!user) return;
+    
+    // Check if they've already booked the call
+    const hasBooked = localStorage.getItem('onboarding_call_booked');
+    if (hasBooked === 'true') return;
+
+    // Check if they've completed onboarding
+    try {
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('company_name, website, industry, niche')
+        .eq('owner_user_id', user.id)
+        .maybeSingle();
+
+      const onboardingComplete = !!(
+        business?.company_name &&
+        business?.website &&
+        business?.industry &&
+        business?.niche
+      );
+
+      // Show booking modal if onboarding is complete but call not booked
+      if (onboardingComplete) {
+        setShowBookingModal(true);
+      }
+    } catch (error) {
+      console.error('Error checking booking status:', error);
+    }
+  };
 
   const loadUserName = async () => {
     if (!user) return;
@@ -215,8 +249,22 @@ export function Dashboard() {
     );
   }
 
+  const handleCallBooked = () => {
+    // User has booked the call, grant them full access
+    localStorage.setItem('onboarding_call_booked', 'true');
+    setShowBookingModal(false);
+  };
+
   return (
     <div className="space-y-8">
+      {showBookingModal && (
+        <BookingModal
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          onBooked={handleCallBooked}
+        />
+      )}
+
       {showProfileCheck && (
         <ProfileCheckModal
           onComplete={async () => {

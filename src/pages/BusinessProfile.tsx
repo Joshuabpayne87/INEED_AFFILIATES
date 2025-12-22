@@ -27,6 +27,8 @@ import {
   acceptConnectionRequest,
   getConnection
 } from '../lib/connectionUtils';
+import { getOrCreateConversation } from '../lib/messagingUtils';
+import { useNavigate } from 'react-router-dom';
 
 interface Offer {
   id: string;
@@ -49,6 +51,7 @@ interface Offer {
 
 export default function BusinessProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [business, setBusiness] = useState<Partial<BusinessProfile> | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +63,7 @@ export default function BusinessProfilePage() {
   const [vaultMessage, setVaultMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [connectionLoading, setConnectionLoading] = useState(false);
   const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [messagingLoading, setMessagingLoading] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -233,6 +237,30 @@ export default function BusinessProfilePage() {
       alert('Failed to accept connection. Please try again.');
     } finally {
       setConnectionLoading(false);
+    }
+  };
+
+  const handleMessageBusiness = async () => {
+    if (!user || !business?.owner_user_id) return;
+
+    setMessagingLoading(true);
+    try {
+      const conversationId = await getOrCreateConversation(
+        user.id,
+        business.owner_user_id,
+        connectionId || null
+      );
+
+      if (conversationId) {
+        navigate(`/messages?conversation=${conversationId}`);
+      } else {
+        alert('Failed to open conversation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error opening conversation:', error);
+      alert('Failed to open conversation. Please try again.');
+    } finally {
+      setMessagingLoading(false);
     }
   };
 
@@ -411,11 +439,15 @@ export default function BusinessProfilePage() {
                         <Check className="w-5 h-5" />
                         Connected
                       </button>
-                      <button className="relative px-6 py-3 bg-gradient-to-r from-[#FF1493] to-[#FF69FF] rounded-lg font-semibold transition-all hover:shadow-lg group flex items-center gap-2">
+                      <button
+                        onClick={handleMessageBusiness}
+                        disabled={messagingLoading}
+                        className="relative px-6 py-3 bg-gradient-to-r from-[#FF1493] to-[#FF69FF] rounded-lg font-semibold transition-all hover:shadow-lg group flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
                         <span className="absolute inset-[2px] bg-white rounded-[6px] group-hover:bg-transparent transition-all"></span>
                         <MessageCircle className="w-5 h-5 relative z-10 text-[#FF1493] group-hover:text-white transition-colors" />
                         <span className="relative z-10 bg-gradient-to-r from-[#FF1493] to-[#FF69FF] bg-clip-text text-transparent group-hover:text-white transition-colors">
-                          Message Business
+                          {messagingLoading ? 'Opening...' : 'Message Business'}
                         </span>
                       </button>
                     </>

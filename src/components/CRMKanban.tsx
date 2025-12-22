@@ -19,10 +19,12 @@ const STAGE_COLORS: Record<CRMStage, string> = {
 
 export function CRMKanban() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [cards, setCards] = useState<CRMCardDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [draggedCard, setDraggedCard] = useState<CRMCardDisplay | null>(null);
   const [draggedOverStage, setDraggedOverStage] = useState<CRMStage | null>(null);
+  const [messagingLoading, setMessagingLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -128,6 +130,30 @@ export function CRMKanban() {
     setDraggedOverStage(null);
   };
 
+  const handleMessagePartner = async (partnerUserId: string, connectionId: string | null) => {
+    if (!user) return;
+
+    setMessagingLoading(partnerUserId);
+    try {
+      const conversationId = await getOrCreateConversation(
+        user.id,
+        partnerUserId,
+        connectionId
+      );
+
+      if (conversationId) {
+        navigate(`/messages?conversation=${conversationId}`);
+      } else {
+        alert('Failed to open conversation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error opening conversation:', error);
+      alert('Failed to open conversation. Please try again.');
+    } finally {
+      setMessagingLoading(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -188,9 +214,7 @@ export function CRMKanban() {
                         <CRMCard
                           card={card}
                           onAccept={loadCards}
-                          onMessage={() => {
-                            console.log('Open message modal for:', card.partner_user_id);
-                          }}
+                          onMessage={() => handleMessagePartner(card.partner_user_id, card.connection?.id || null)}
                           isDragging={draggedCard?.id === card.id}
                         />
                       </div>

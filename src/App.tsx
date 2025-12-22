@@ -29,6 +29,8 @@ import { TermsOfService } from './pages/TermsOfService';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { MyLeads } from './pages/MyLeads';
 import { Messages } from './pages/Messages';
+import { W9Upload } from './pages/W9Upload';
+import { BusinessLeads } from './pages/BusinessLeads';
 
 function ProtectedRoute({ children, requireOnboarding = false, requireSubscription = false }: {
   children: React.ReactNode;
@@ -241,6 +243,8 @@ function App() {
             <Route path="/follow-up" element={<FollowUpList />} />
             <Route path="/connections" element={<Connections />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/w9-upload" element={<W9Upload />} />
+            <Route path="/business-leads" element={<BusinessLeads />} />
           </Route>
         </Routes>
       </AuthProvider>

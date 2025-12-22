@@ -2,6 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import {
+  getUserConversations,
+  getConversationMessages,
+  sendMessage,
+  markConversationAsRead,
+  Conversation,
+  Message,
+} from '../lib/messagingUtils';
+import { useNavigate } from 'react-router-dom';
+import {
   MessageSquare,
   Search,
   Send,
@@ -10,51 +19,51 @@ import {
   Video,
   Paperclip,
   Smile,
-  ChevronLeft
+  ChevronLeft,
+  Star,
+  Filter
 } from 'lucide-react';
-
-interface Conversation {
-  id: string;
-  partner_user_id: string;
-  partner_name: string;
-  partner_company: string;
-  partner_avatar: string | null;
-  last_message: string;
-  last_message_at: string;
-  unread_count: number;
-}
-
-interface Message {
-  id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-  is_read: boolean;
-}
 
 export function Messages() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'starred'>('all');
   const [showMobileList, setShowMobileList] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const conversationChannelRef = useRef<any>(null);
+  const messagesChannelRef = useRef<any>(null);
 
   useEffect(() => {
     if (user) {
       loadConversations();
+      setupRealtimeSubscriptions();
     }
+
+    return () => {
+      // Cleanup subscriptions
+      if (conversationChannelRef.current) {
+        supabase.removeChannel(conversationChannelRef.current);
+      }
+      if (messagesChannelRef.current) {
+        supabase.removeChannel(messagesChannelRef.current);
+      }
+    };
   }, [user]);
 
   useEffect(() => {
-    if (selectedConversation) {
+    if (selectedConversation && user) {
       loadMessages(selectedConversation.id);
+      markConversationAsRead(selectedConversation.id, user.id);
       setShowMobileList(false);
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, user]);
 
   useEffect(() => {
     scrollToBottom();
@@ -64,11 +73,64 @@ export function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const setupRealtimeSubscriptions = () => {
+    if (!user) return;
+
+    // Subscribe to new messages
+    messagesChannelRef.current = supabase
+      .channel('messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload: any) => {
+          const newMessage = payload.new;
+          if (selectedConversation && newMessage.conversation_id === selectedConversation.id) {
+            // Add to current conversation
+            setMessages((prev) => [...prev, {
+              id: newMessage.id,
+              conversation_id: newMessage.conversation_id,
+              sender_user_id: newMessage.sender_user_id,
+              content: newMessage.content,
+              is_read: newMessage.is_read,
+              read_at: newMessage.read_at,
+              created_at: newMessage.created_at,
+              is_system_message: newMessage.is_system_message || false,
+              system_message_type: newMessage.system_message_type,
+            }]);
+            scrollToBottom();
+          }
+          // Reload conversations to update last message
+          loadConversations();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to conversation updates
+    conversationChannelRef.current = supabase
+      .channel('conversations')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversations',
+        },
+        () => {
+          loadConversations();
+        }
+      )
+      .subscribe();
+  };
+
   const loadConversations = async () => {
+    if (!user) return;
     try {
-      // TODO: Create messages/conversations tables and fetch from Supabase
-      // For now, use mock data to show UI structure
-      setConversations([]);
+      const data = await getUserConversations(user.id);
+      setConversations(data);
     } catch (error) {
       console.error('Error loading conversations:', error);
     } finally {
@@ -78,29 +140,32 @@ export function Messages() {
 
   const loadMessages = async (conversationId: string) => {
     try {
-      // TODO: Fetch messages from Supabase
-      setMessages([]);
+      const data = await getConversationMessages(conversationId);
+      setMessages(data);
     } catch (error) {
       console.error('Error loading messages:', error);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConversation || !user || sending) return;
 
+    setSending(true);
     try {
-      // TODO: Insert message into Supabase
-      const tempMessage: Message = {
-        id: Date.now().toString(),
-        sender_id: user?.id || '',
-        content: newMessage,
-        created_at: new Date().toISOString(),
-        is_read: true,
-      };
-      setMessages([...messages, tempMessage]);
-      setNewMessage('');
+      const sentMessage = await sendMessage(
+        selectedConversation.id,
+        user.id,
+        newMessage
+      );
+      if (sentMessage) {
+        setMessages((prev) => [...prev, sentMessage]);
+        setNewMessage('');
+        scrollToBottom();
+      }
     } catch (error) {
       console.error('Error sending message:', error);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -111,13 +176,44 @@ export function Messages() {
     }
   };
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.partner_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.partner_company.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations.filter(conv => {
+    const matchesSearch = 
+      (conv.other_user?.first_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (conv.other_user?.last_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (conv.other_user?.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (conv.other_user?.business?.company_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (!matchesSearch) return false;
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    if (filter === 'unread') {
+      return (conv.unread_count || 0) > 0;
+    }
+    // TODO: Implement starred filter when we add that feature
+    if (filter === 'starred') {
+      return false; // Placeholder
+    }
+    return true;
+  });
+
+  const getInitials = (firstName: string | null, lastName: string | null, email: string) => {
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName[0].toUpperCase();
+    }
+    return email[0]?.toUpperCase() || 'U';
+  };
+
+  const getPartnerName = (conv: Conversation) => {
+    if (conv.other_user?.first_name && conv.other_user?.last_name) {
+      return `${conv.other_user.first_name} ${conv.other_user.last_name}`;
+    }
+    return conv.other_user?.email || 'Unknown';
+  };
+
+  const getPartnerCompany = (conv: Conversation) => {
+    return conv.other_user?.business?.company_name || '';
   };
 
   const formatTime = (dateString: string) => {
@@ -151,7 +247,7 @@ export function Messages() {
         {/* Search Header */}
         <div className="p-4 border-b border-gray-100">
           <h1 className="text-xl font-heading font-bold text-navy mb-4">Messages</h1>
-          <div className="relative">
+          <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -160,6 +256,39 @@ export function Messages() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm"
             />
+          </div>
+          {/* Filter Tabs */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                filter === 'all'
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilter('unread')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                filter === 'unread'
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Unread
+            </button>
+            <button
+              onClick={() => setFilter('starred')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                filter === 'starred'
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Starred
+            </button>
           </div>
         </div>
 
@@ -184,27 +313,31 @@ export function Messages() {
                   }`}
                 >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-cyan flex items-center justify-center text-white font-semibold flex-shrink-0">
-                    {conversation.partner_avatar ? (
-                      <img
-                        src={conversation.partner_avatar}
-                        alt={conversation.partner_name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      getInitials(conversation.partner_name)
+                    {getInitials(
+                      conversation.other_user?.first_name || null,
+                      conversation.other_user?.last_name || null,
+                      conversation.other_user?.email || ''
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-medium text-navy truncate">{conversation.partner_name}</h3>
-                      <span className="text-xs text-gray-400 flex-shrink-0">
-                        {formatTime(conversation.last_message_at)}
-                      </span>
+                      <h3 className="font-medium text-navy truncate">{getPartnerName(conversation)}</h3>
+                      {conversation.last_message_at && (
+                        <span className="text-xs text-gray-400 flex-shrink-0">
+                          {formatTime(conversation.last_message_at)}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-500 truncate">{conversation.partner_company}</p>
-                    <p className="text-sm text-gray-400 truncate mt-1">{conversation.last_message}</p>
+                    {getPartnerCompany(conversation) && (
+                      <p className="text-sm text-gray-500 truncate">{getPartnerCompany(conversation)}</p>
+                    )}
+                    {conversation.last_message && (
+                      <p className="text-sm text-gray-400 truncate mt-1">
+                        {conversation.last_message.content}
+                      </p>
+                    )}
                   </div>
-                  {conversation.unread_count > 0 && (
+                  {(conversation.unread_count || 0) > 0 && (
                     <span className="w-5 h-5 rounded-full bg-primary text-white text-xs flex items-center justify-center flex-shrink-0">
                       {conversation.unread_count}
                     </span>
@@ -229,27 +362,30 @@ export function Messages() {
                 <ChevronLeft className="w-5 h-5 text-gray-600" />
               </button>
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-cyan flex items-center justify-center text-white font-semibold">
-                {selectedConversation.partner_avatar ? (
-                  <img
-                    src={selectedConversation.partner_avatar}
-                    alt={selectedConversation.partner_name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  getInitials(selectedConversation.partner_name)
+                {getInitials(
+                  selectedConversation.other_user?.first_name || null,
+                  selectedConversation.other_user?.last_name || null,
+                  selectedConversation.other_user?.email || ''
                 )}
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-navy">{selectedConversation.partner_name}</h3>
-                <p className="text-sm text-gray-500">{selectedConversation.partner_company}</p>
+                <h3 className="font-medium text-navy">{getPartnerName(selectedConversation)}</h3>
+                {getPartnerCompany(selectedConversation) && (
+                  <p className="text-sm text-gray-500">{getPartnerCompany(selectedConversation)}</p>
+                )}
               </div>
+              <button
+                onClick={() => {
+                  // Navigate to partner profile
+                  if (selectedConversation.other_user?.id) {
+                    navigate(`/directory/${selectedConversation.other_user.id}`);
+                  }
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                View Profile
+              </button>
               <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <Phone className="w-5 h-5 text-gray-600" />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                  <Video className="w-5 h-5 text-gray-600" />
-                </button>
                 <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                   <MoreVertical className="w-5 h-5 text-gray-600" />
                 </button>
@@ -264,27 +400,52 @@ export function Messages() {
                   <p className="text-gray-500">No messages yet. Say hello!</p>
                 </div>
               ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                        message.sender_id === user?.id
-                          ? 'bg-primary text-white rounded-br-md'
-                          : 'bg-gray-100 text-navy rounded-bl-md'
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <p className={`text-xs mt-1 ${
-                        message.sender_id === user?.id ? 'text-white/70' : 'text-gray-400'
-                      }`}>
-                        {formatTime(message.created_at)}
-                      </p>
+                messages.map((message, index) => {
+                  const isOwn = message.sender_user_id === user?.id;
+                  const prevMessage = index > 0 ? messages[index - 1] : null;
+                  const showDateSeparator = !prevMessage || 
+                    new Date(message.created_at).toDateString() !== new Date(prevMessage.created_at).toDateString();
+                  
+                  return (
+                    <div key={message.id}>
+                      {showDateSeparator && (
+                        <div className="text-center my-4">
+                          <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
+                            {new Date(message.created_at).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </span>
+                        </div>
+                      )}
+                      <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                        <div
+                          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                            message.is_system_message
+                              ? 'bg-gray-200 text-gray-600 text-center mx-auto'
+                              : isOwn
+                              ? 'bg-primary text-white rounded-br-md'
+                              : 'bg-gray-100 text-navy rounded-bl-md'
+                          }`}
+                        >
+                          <p className="text-sm">{message.content}</p>
+                          {!message.is_system_message && (
+                            <p className={`text-xs mt-1 ${
+                              isOwn ? 'text-white/70' : 'text-gray-400'
+                            }`}>
+                              {formatTime(message.created_at)}
+                              {isOwn && message.is_read && (
+                                <span className="ml-2">✓ Read</span>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -310,7 +471,7 @@ export function Messages() {
                 </button>
                 <button
                   onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() || sending}
                   className="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-5 h-5" />
