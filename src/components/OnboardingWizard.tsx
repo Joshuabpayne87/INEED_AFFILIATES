@@ -239,6 +239,12 @@ export function OnboardingWizard({ onClose, onComplete, initialData }: Onboardin
                 onChange={(e) => updateField('tagline', e.target.value)}
                 placeholder="Short one-sentence description (optional)"
               />
+              <FileUpload
+                label="Business Logo (optional)"
+                value={formData.logo_url || null}
+                onChange={(url) => updateField('logo_url', url || '')}
+                folder="company-logos"
+              />
               <Input
                 label="Website URL*"
                 value={formData.website || ''}

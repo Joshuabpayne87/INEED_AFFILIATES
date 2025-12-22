@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { MultiSelectChips } from '../components/ui/MultiSelectChips';
+import { FileUpload } from '../components/ui/FileUpload';
 import { AlertCircle } from 'lucide-react';
 
 const INDUSTRIES = [
@@ -141,6 +142,7 @@ export function Onboarding() {
     niche: '',
     main_offer_type: '',
     monetization_type: '',
+    logo_url: '',
   });
 
   const [partnershipTypes, setPartnershipTypes] = useState<string[]>([]);
@@ -169,6 +171,7 @@ export function Onboarding() {
         company_name: formData.company_name,
         business_name: formData.company_name,
         tagline: formData.tagline || null,
+        logo_url: formData.logo_url || null,
         website: formData.website_url || null,
         industry: formData.industry || '',
         niche: formData.niche || '',
@@ -277,6 +280,15 @@ export function Onboarding() {
                 onChange={handleChange}
                 placeholder="Short one-sentence description (optional)"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#6666FF] focus:border-[#6666FF] transition-all duration-200 outline-none"
+              />
+            </div>
+
+            <div>
+              <FileUpload
+                label="Business Logo (optional)"
+                value={formData.logo_url || null}
+                onChange={(url) => setFormData({ ...formData, logo_url: url || '' })}
+                folder="company-logos"
               />
             </div>
 

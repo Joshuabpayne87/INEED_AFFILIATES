@@ -885,13 +885,11 @@ export function Settings() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Profile Photo URL
-                    </label>
-                    <Input
+                    <FileUpload
+                      label="Profile Photo (optional)"
                       value={userProfile.headshot_url}
-                      onChange={(e) => setUserProfile({ ...userProfile, headshot_url: e.target.value })}
-                      placeholder="https://example.com/photo.jpg"
+                      onChange={(url) => setUserProfile({ ...userProfile, headshot_url: url || '' })}
+                      folder="profile-photos"
                     />
                   </div>
                   <div>
@@ -998,11 +996,11 @@ export function Settings() {
                     onChange={(e) => setBusinessProfile({ ...businessProfile, tagline: e.target.value })}
                     placeholder="Short one-sentence description (optional)"
                   />
-                  <Input
-                    label="Business Logo URL"
+                  <FileUpload
+                    label="Business Logo (optional)"
                     value={businessProfile.logo_url}
-                    onChange={(e) => setBusinessProfile({ ...businessProfile, logo_url: e.target.value })}
-                    placeholder="https://example.com/logo.png (optional)"
+                    onChange={(url) => setBusinessProfile({ ...businessProfile, logo_url: url || '' })}
+                    folder="company-logos"
                   />
                   <Input
                     label="Website URL"

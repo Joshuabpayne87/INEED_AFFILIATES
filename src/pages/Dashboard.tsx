@@ -75,8 +75,12 @@ export function Dashboard() {
       );
 
       // Show booking modal if onboarding is complete but call not booked
+      // Add a small delay to ensure dashboard is fully loaded and visible
       if (onboardingComplete) {
-        setShowBookingModal(true);
+        // Wait 500ms so user can see the dashboard behind the modal
+        setTimeout(() => {
+          setShowBookingModal(true);
+        }, 500);
       }
     } catch (error) {
       console.error('Error checking booking status:', error);
