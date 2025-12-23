@@ -62,3 +62,4 @@ Then run the SQL script (it will handle the rest).
 - Price options are configured for each offer
 - All businesses are set to `is_live: true` and `is_profile_published: true`
 
+

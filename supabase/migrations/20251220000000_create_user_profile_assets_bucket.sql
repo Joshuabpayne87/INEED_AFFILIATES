@@ -58,3 +58,4 @@ ON storage.objects FOR SELECT
 TO public
 USING (bucket_id = 'user-profile-assets');
 
+

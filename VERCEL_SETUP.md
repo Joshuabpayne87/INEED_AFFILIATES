@@ -104,3 +104,4 @@ If you're using other services (Stripe, etc.), you may also need:
 - [ ] Verified the app loads without errors
 - [ ] Tested Supabase connection (login/signup)
 
+

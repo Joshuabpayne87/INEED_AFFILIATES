@@ -36,7 +36,7 @@ Use this checklist to ensure you complete all steps correctly.
 
 ## Step 3: Verification
 - [ ] Waited at least 10-15 minutes for DNS propagation
-- [ ] Checked DNS propagation at whatsmydns.net
+- [ ] Checked DNS propagation at whatsmynetdns.
 - [ ] Verified domain status in Vercel shows "Valid" or "Configured"
 - [ ] Tested http://yourdomain.com in browser
 - [ ] Tested https://yourdomain.com in browser
@@ -59,4 +59,5 @@ Vercel CNAME Value: ________________________________
 Domain Name: ________________________________
 Date Setup Started: ________________________________
 Date Setup Completed: ________________________________
+
 

@@ -34,3 +34,4 @@ CREATE TRIGGER trigger_lock_commission_terms
   FOR EACH ROW
   EXECUTE FUNCTION lock_commission_terms_on_first_commission();
 
+

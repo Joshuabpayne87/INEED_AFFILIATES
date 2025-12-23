@@ -41,3 +41,4 @@ export function getFrequencyLabel(frequency: PriceFrequency): string {
   return labels[frequency] || frequency;
 }
 
+

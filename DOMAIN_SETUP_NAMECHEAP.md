@@ -246,3 +246,4 @@ Once your domain is working:
 3. ✅ Set up redirects in Vercel for www/non-www preferences
 4. ✅ Test all functionality with your new domain
 
+

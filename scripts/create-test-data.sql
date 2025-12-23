@@ -287,3 +287,4 @@ LEFT JOIN offers o ON o.business_id = b.id
 WHERE u.email IN ('test-business1@ineedaffiliates.com', 'test-business2@ineedaffiliates.com')
 GROUP BY u.id, u.email, u.first_name, u.last_name, b.company_name;
 
+
