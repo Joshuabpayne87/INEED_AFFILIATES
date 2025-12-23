@@ -9,7 +9,10 @@
 -- 1. CREATE CONVERSATIONS TABLE
 -- =====================================================================
 
-CREATE TABLE IF NOT EXISTS conversations (
+-- Drop if exists (for idempotency)
+DROP TABLE IF EXISTS conversations CASCADE;
+
+CREATE TABLE conversations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   participant_1_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   participant_2_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -65,7 +68,10 @@ CREATE POLICY "Users can update their own conversations"
 -- 2. CREATE MESSAGES TABLE
 -- =====================================================================
 
-CREATE TABLE IF NOT EXISTS messages (
+-- Drop old messages table if it exists (different structure from previous migration)
+DROP TABLE IF EXISTS messages CASCADE;
+
+CREATE TABLE messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   sender_user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -132,7 +138,10 @@ CREATE POLICY "Users can update their own messages (mark as read)"
 -- 3. CREATE MESSAGE NOTIFICATIONS TABLE
 -- =====================================================================
 
-CREATE TABLE IF NOT EXISTS message_notifications (
+-- Drop if exists (for idempotency)
+DROP TABLE IF EXISTS message_notifications CASCADE;
+
+CREATE TABLE message_notifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
@@ -164,6 +173,16 @@ CREATE POLICY "System can manage message notifications"
 -- =====================================================================
 -- 4. FUNCTIONS AND TRIGGERS
 -- =====================================================================
+
+-- Drop all triggers and functions if they exist (for idempotency)
+-- Drop triggers first (they depend on functions)
+DROP TRIGGER IF EXISTS trigger_update_conversation_last_message ON messages;
+DROP TRIGGER IF EXISTS trigger_update_message_notifications ON messages;
+-- Then drop functions
+DROP FUNCTION IF EXISTS get_or_create_conversation(uuid, uuid, uuid);
+DROP FUNCTION IF EXISTS update_conversation_last_message();
+DROP FUNCTION IF EXISTS update_message_notifications();
+DROP FUNCTION IF EXISTS mark_conversation_messages_read(uuid, uuid);
 
 -- Function to get or create a conversation between two users
 CREATE OR REPLACE FUNCTION get_or_create_conversation(

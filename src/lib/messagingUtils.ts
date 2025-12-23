@@ -96,12 +96,85 @@ export async function getUserConversations(userId: string): Promise<Conversation
           created_at,
           sender_user_id
         ),
-        message_notifications!inner(unread_count)
+        message_notifications(unread_count)
       `)
       .or(`participant_1_user_id.eq.${userId},participant_2_user_id.eq.${userId}`)
       .order('last_message_at', { ascending: false, nullsFirst: false });
 
-    if (error) throw error;
+    if (error) {
+      // If message_notifications table doesn't exist yet (migration not run), try without it
+      if (error.code === 'PGRST205' || error.message?.includes('Could not find the table') || error.message?.includes('message_notifications')) {
+        console.warn('message_notifications table does not exist yet, loading conversations without unread counts');
+        // Retry without message_notifications
+        const { data: retryData, error: retryError } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            participant_1:users!conversations_participant_1_user_id_fkey(
+              id,
+              email,
+              first_name,
+              last_name,
+              businesses(company_name, logo_url)
+            ),
+            participant_2:users!conversations_participant_2_user_id_fkey(
+              id,
+              email,
+              first_name,
+              last_name,
+              businesses(company_name, logo_url)
+            ),
+            messages:messages(
+              id,
+              content,
+              created_at,
+              sender_user_id
+            )
+          `)
+          .or(`participant_1_user_id.eq.${userId},participant_2_user_id.eq.${userId}`)
+          .order('last_message_at', { ascending: false, nullsFirst: false });
+        
+        if (retryError) throw retryError;
+        
+        // Map the retry data (without notifications)
+        return (retryData || []).map((conv: any) => {
+          const isParticipant1 = conv.participant_1_user_id === userId;
+          const otherUser = isParticipant1 ? conv.participant_2 : conv.participant_1;
+          const lastMessage = conv.messages && conv.messages.length > 0 
+            ? conv.messages.sort((a: any, b: any) => 
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              )[0]
+            : null;
+
+          return {
+            id: conv.id,
+            participant_1_user_id: conv.participant_1_user_id,
+            participant_2_user_id: conv.participant_2_user_id,
+            connection_id: conv.connection_id,
+            created_at: conv.created_at,
+            last_message_at: conv.last_message_at,
+            participant_1_last_read_at: conv.participant_1_last_read_at,
+            participant_2_last_read_at: conv.participant_2_last_read_at,
+            other_user: {
+              id: otherUser.id,
+              email: otherUser.email,
+              first_name: otherUser.first_name,
+              last_name: otherUser.last_name,
+              business: Array.isArray(otherUser.businesses) && otherUser.businesses.length > 0 
+                ? otherUser.businesses[0] 
+                : (otherUser.businesses && !Array.isArray(otherUser.businesses) ? otherUser.businesses : null),
+            },
+            last_message: lastMessage ? {
+              content: lastMessage.content,
+              created_at: lastMessage.created_at,
+              sender_user_id: lastMessage.sender_user_id,
+            } : undefined,
+            unread_count: 0, // Default to 0 when table doesn't exist
+          };
+        });
+      }
+      throw error;
+    }
 
     return (data || []).map((conv: any) => {
       const isParticipant1 = conv.participant_1_user_id === userId;
@@ -268,7 +341,14 @@ export async function getUnreadMessageCount(userId: string): Promise<number> {
       .select('unread_count')
       .eq('user_id', userId);
 
-    if (error) throw error;
+    if (error) {
+      // If table doesn't exist yet (migration not run), return 0 gracefully
+      if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
+        console.warn('message_notifications table does not exist yet (migration may not have been run)');
+        return 0;
+      }
+      throw error;
+    }
 
     return (data || []).reduce((sum, notif) => sum + (notif.unread_count || 0), 0);
   } catch (error) {

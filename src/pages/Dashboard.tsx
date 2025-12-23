@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Card } from '../components/ui/Card';
@@ -28,6 +28,7 @@ interface UpcomingTask {
 
 export function Dashboard() {
   const { user } = useAuth();
+  const location = useLocation();
   const [stats, setStats] = useState<Stats>({
     connections: 0,
     offersInMarketplace: 0,
@@ -50,7 +51,7 @@ export function Dashboard() {
     checkProfileStatus();
     loadUserName();
     checkIfShouldShowBookingModal();
-  }, [user]);
+  }, [user, location.pathname]);
 
   const checkIfShouldShowBookingModal = async () => {
     if (!user) return;
@@ -173,7 +174,7 @@ export function Dashboard() {
           .eq('is_active', true),
 
         supabase
-          .from('user_offers')
+          .from('offer_vault')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id),
 

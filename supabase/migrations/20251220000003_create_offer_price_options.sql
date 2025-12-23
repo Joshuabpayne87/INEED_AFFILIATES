@@ -32,6 +32,9 @@ CREATE INDEX IF NOT EXISTS offer_price_options_sort_order_idx ON offer_price_opt
 -- Enable RLS
 ALTER TABLE offer_price_options ENABLE ROW LEVEL SECURITY;
 
+-- Drop function if exists (for idempotency)
+DROP FUNCTION IF EXISTS can_manage_offer(uuid);
+
 -- Helper function to check if user can manage an offer
 CREATE OR REPLACE FUNCTION can_manage_offer(p_offer_id uuid)
 RETURNS boolean
@@ -77,6 +80,12 @@ $$;
 
 -- RLS Policies
 
+-- Drop existing policies if they exist (for idempotency)
+DROP POLICY IF EXISTS "Users can view price options for accessible offers" ON offer_price_options;
+DROP POLICY IF EXISTS "Offer owners can insert price options" ON offer_price_options;
+DROP POLICY IF EXISTS "Offer owners can update price options" ON offer_price_options;
+DROP POLICY IF EXISTS "Offer owners can delete price options" ON offer_price_options;
+
 -- SELECT: Users can view price options for offers they can view
 CREATE POLICY "Users can view price options for accessible offers"
   ON offer_price_options FOR SELECT
@@ -112,6 +121,10 @@ CREATE POLICY "Offer owners can delete price options"
   ON offer_price_options FOR DELETE
   TO authenticated
   USING (can_manage_offer(offer_id));
+
+-- Drop function and trigger if exists (for idempotency)
+DROP TRIGGER IF EXISTS trigger_update_offer_price_options_updated_at ON offer_price_options;
+DROP FUNCTION IF EXISTS update_offer_price_options_updated_at();
 
 -- Trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_offer_price_options_updated_at()

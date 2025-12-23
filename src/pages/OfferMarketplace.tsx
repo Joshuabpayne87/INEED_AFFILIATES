@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import {
@@ -14,6 +14,7 @@ import {
   X,
   Bookmark,
   ShoppingCart,
+  RefreshCw,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -100,9 +101,11 @@ function getAISuggestedOffers(userProfile: Partial<BusinessProfile> | null, allO
 
 export function OfferMarketplace() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOfferType, setFilterOfferType] = useState<string>('');
   const [filterCommissionType, setFilterCommissionType] = useState<string>('');
@@ -113,12 +116,13 @@ export function OfferMarketplace() {
   const [addingToVault, setAddingToVault] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  // Reload offers when component mounts or when location changes (user navigates to this page)
   useEffect(() => {
     loadOffers();
     if (user) {
       loadUserProfile();
     }
-  }, [user]);
+  }, [user, location.pathname]);
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -139,7 +143,13 @@ export function OfferMarketplace() {
     }
   };
 
-  const loadOffers = async () => {
+  const loadOffers = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
     try {
       const { data, error } = await supabase
         .from('offers')
@@ -181,7 +191,12 @@ export function OfferMarketplace() {
       setOffers([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    loadOffers(true);
   };
 
   const filteredAndSortedOffers = useMemo(() => {
@@ -306,11 +321,22 @@ export function OfferMarketplace() {
         </div>
       )}
 
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-gray-900 mb-2">
-          Offer Marketplace
-        </h1>
-        <p className="text-gray-600">Browse high-ticket offers from partners</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-gray-900 mb-2">
+            Offer Marketplace
+          </h1>
+          <p className="text-gray-600">Browse high-ticket offers from partners</p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+          className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          title="Refresh offers"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">

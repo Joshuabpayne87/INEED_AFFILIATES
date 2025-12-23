@@ -198,46 +198,21 @@ export function Connections() {
     }
   }
 
-  async function handleApprove(connectionId: string, businessId: string) {
+  async function handleApprove(connectionId: string, otherUserId: string) {
     if (!user) return;
 
     setProcessingId(connectionId);
     try {
-      const { error: updateError } = await supabase
-        .from('connections')
-        .update({
-          status: 'accepted',
-          accepted_at: new Date().toISOString()
-        })
-        .eq('id', connectionId);
+      // Use the utility function which handles all the logic properly
+      const { acceptConnectionRequest } = await import('../lib/connectionUtils');
+      const result = await acceptConnectionRequest(connectionId);
 
-      if (updateError) throw updateError;
-
-      await supabase
-        .from('offer_vault')
-        .update({ status: 'approved' })
-        .eq('user_id', businessId)
-        .eq('business_id', user.id);
-
-      const { data: connection } = await supabase
-        .from('connections')
-        .select('requester_user_id')
-        .eq('id', connectionId)
-        .single();
-
-      if (connection) {
-        await supabase
-          .from('notifications')
-          .insert({
-            user_id: connection.requester_user_id,
-            type: 'connection_accepted',
-            title: 'Connection Accepted!',
-            message: 'Your connection request has been accepted.',
-            link: '/connections',
-          });
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to accept connection');
       }
 
-      loadConnections();
+      // Reload connections to show updated status
+      await loadConnections();
     } catch (error) {
       console.error('Error approving connection:', error);
       alert('Failed to approve connection. Please try again.');

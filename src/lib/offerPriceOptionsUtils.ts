@@ -47,11 +47,25 @@ export async function saveOfferPriceOptions(
 
     const existingIds = new Set(existing?.map((r) => r.id) || []);
 
-    // Prepare upsert data with sort_order
-    const toUpsert = priceOptions
-      .filter((opt) => opt.amount > 0 && opt.frequency) // Only valid options
-      .map((opt, index) => ({
-        id: opt.id || undefined,
+    // Separate new records (no id) from existing records (with id)
+    // Calculate sort_order based on position in the valid options array
+    const validOptions = priceOptions.filter((opt) => opt.amount > 0 && opt.frequency);
+    const toInsert = validOptions
+      .map((opt, index) => ({ opt, index }))
+      .filter(({ opt }) => !opt.id) // New records without id
+      .map(({ opt, index }) => ({
+        offer_id: offerId,
+        amount: opt.amount,
+        currency: opt.currency || 'USD',
+        frequency: opt.frequency,
+        sort_order: index,
+      }));
+    
+    const toUpdate = validOptions
+      .map((opt, index) => ({ opt, index }))
+      .filter(({ opt }) => opt.id) // Existing records with id
+      .map(({ opt, index }) => ({
+        id: opt.id!,
         offer_id: offerId,
         amount: opt.amount,
         currency: opt.currency || 'USD',
@@ -60,7 +74,7 @@ export async function saveOfferPriceOptions(
       }));
 
     // Delete existing rows not in the new payload
-    const submittedIds = new Set(priceOptions.filter((opt) => opt.id).map((opt) => opt.id!));
+    const submittedIds = new Set(validOptions.filter((opt) => opt.id).map((opt) => opt.id!));
     const toDelete = Array.from(existingIds).filter((id) => !submittedIds.has(id));
 
     // Perform operations in a transaction-like manner
@@ -73,16 +87,27 @@ export async function saveOfferPriceOptions(
       if (deleteError) throw deleteError;
     }
 
-    if (toUpsert.length > 0) {
-      // Upsert (insert or update)
-      const { error: upsertError } = await supabase
-        .from('offer_price_options')
-        .upsert(toUpsert, {
-          onConflict: 'id',
-        });
+    // Update existing records
+    if (toUpdate.length > 0) {
+      for (const record of toUpdate) {
+        const { id, ...updateData } = record;
+        const { error: updateError } = await supabase
+          .from('offer_price_options')
+          .update(updateData)
+          .eq('id', id);
 
-      if (upsertError) throw upsertError;
-    } else if (existingIds.size > 0) {
+        if (updateError) throw updateError;
+      }
+    }
+
+    // Insert new records
+    if (toInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('offer_price_options')
+        .insert(toInsert);
+
+      if (insertError) throw insertError;
+    } else if (existingIds.size > 0 && validOptions.length === 0) {
       // If no valid options but there were existing ones, delete all
       const { error: deleteAllError } = await supabase
         .from('offer_price_options')

@@ -153,30 +153,38 @@ export async function acceptConnectionRequest(
 
         const updates = [];
         
+        // Update requester's vault entries (offers from recipient's business)
         if (recipientBusiness) {
           updates.push(
             supabase
               .from('offer_vault')
               .update({ status: 'approved' })
               .eq('user_id', connection.requester_user_id)
-              .eq('business_id', recipientBusiness.id)
+              .eq('business_id', recipientBusiness.id.toString())
               .eq('status', 'pending_connection')
           );
         }
 
+        // Update recipient's vault entries (offers from requester's business)
         if (requesterBusiness) {
           updates.push(
             supabase
               .from('offer_vault')
               .update({ status: 'approved' })
               .eq('user_id', connection.recipient_user_id)
-              .eq('business_id', requesterBusiness.id)
+              .eq('business_id', requesterBusiness.id.toString())
               .eq('status', 'pending_connection')
           );
         }
 
         if (updates.length > 0) {
-          await Promise.all(updates);
+          const results = await Promise.all(updates);
+          // Check for errors but don't fail the whole operation if vault update fails
+          results.forEach((result, index) => {
+            if (result.error) {
+              console.warn(`Failed to update offer vault ${index}:`, result.error);
+            }
+          });
         }
       }
     }
